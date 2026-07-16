@@ -1,0 +1,22 @@
+{
+  "name": "kickoff",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A YouTube-first desktop media dashboard.",
+  "type": "module",
+  "scripts": {
+    "dev": "npm run dev -w apps/desktop",
+    "build": "npm run build -w apps/desktop",
+    "preview": "npm run preview -w apps/desktop",
+    "typecheck": "npm run typecheck -w apps/desktop",
+    "electron": "npm run electron -w apps/desktop",
+    "lint": "npm run typecheck"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20"
+  }
+}

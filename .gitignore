@@ -1,0 +1,13 @@
+node_modules
+dist
+dist-electron
+dist-types
+release
+.vite
+.turbo
+*.tsbuildinfo
+.DS_Store
+*.log
+.env
+.env.*
+!.env.example
