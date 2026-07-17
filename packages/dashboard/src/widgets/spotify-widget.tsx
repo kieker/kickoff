@@ -1,9 +1,19 @@
 import { AudioLines, Music2 } from "lucide-react";
 import { WidgetShell } from "../components/widget-shell";
 
-export function SpotifyWidget() {
+type SpotifyWidgetProps = {
+  onRefresh?: () => void;
+  onHide?: () => void;
+};
+
+export function SpotifyWidget({ onRefresh, onHide }: SpotifyWidgetProps) {
   return (
-    <WidgetShell title="Now playing" eyebrow="Spotify phase two">
+    <WidgetShell
+      title="Now playing"
+      eyebrow="Spotify phase two"
+      onRefresh={onRefresh}
+      onHide={onHide}
+    >
       <div className="flex items-center gap-3">
         <div className="grid h-14 w-14 place-items-center rounded-md bg-green-500/22 text-green-100">
           <Music2 className="h-6 w-6" />

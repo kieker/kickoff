@@ -1,9 +1,14 @@
 import { CloudSun, Droplets, Wind } from "lucide-react";
 import { WidgetShell } from "../components/widget-shell";
 
-export function WeatherWidget() {
+type WeatherWidgetProps = {
+  onRefresh?: () => void;
+  onHide?: () => void;
+};
+
+export function WeatherWidget({ onRefresh, onHide }: WeatherWidgetProps) {
   return (
-    <WidgetShell title="Weather" eyebrow="Cape Town">
+    <WidgetShell title="Weather" eyebrow="Cape Town" onRefresh={onRefresh} onHide={onHide}>
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-5xl font-semibold tracking-normal">21</p>

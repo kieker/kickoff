@@ -4,10 +4,23 @@ import type { DashboardSettings } from "../types";
 
 type TopBarProps = {
   settings: DashboardSettings;
+  lastRefreshedAt?: string;
+  notificationsOpen: boolean;
   onToggleEditMode(): void;
+  onRefresh(): void;
+  onToggleNotifications(): void;
+  onOpenSettings(): void;
 };
 
-export function TopBar({ settings, onToggleEditMode }: TopBarProps) {
+export function TopBar({
+  settings,
+  lastRefreshedAt,
+  notificationsOpen,
+  onToggleEditMode,
+  onRefresh,
+  onToggleNotifications,
+  onOpenSettings
+}: TopBarProps) {
   return (
     <header className="sticky top-0 z-20 flex items-center justify-between gap-4 border-b border-black/10 bg-white/58 px-5 py-3 backdrop-blur-xl dark:border-white/10 dark:bg-black/18">
       <div className="flex min-w-0 items-center gap-3">
@@ -23,12 +36,32 @@ export function TopBar({ settings, onToggleEditMode }: TopBarProps) {
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
-        <Button aria-label="Refresh dashboard" size="icon" variant="ghost">
+        {lastRefreshedAt ? (
+          <span className="hidden text-xs text-muted-foreground sm:inline">
+            Updated {lastRefreshedAt}
+          </span>
+        ) : null}
+        <Button aria-label="Refresh dashboard" size="icon" variant="ghost" onClick={onRefresh}>
           <RefreshCw className="h-4 w-4" />
         </Button>
-        <Button aria-label="Notifications" size="icon" variant="ghost">
+        <div className="relative">
+        <Button
+          aria-label="Notifications"
+          size="icon"
+          variant={notificationsOpen ? "primary" : "ghost"}
+          onClick={onToggleNotifications}
+        >
           <Bell className="h-4 w-4" />
         </Button>
+        {notificationsOpen ? (
+          <div className="absolute right-0 top-11 w-72 rounded-lg border border-black/10 bg-card/96 p-3 text-sm shadow-panel dark:border-white/12">
+            <p className="font-semibold">Beta notifications</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Real notification settings will arrive after the first live integrations.
+            </p>
+          </div>
+        ) : null}
+        </div>
         <Button
           aria-label="Toggle layout editing"
           size="icon"
@@ -37,7 +70,7 @@ export function TopBar({ settings, onToggleEditMode }: TopBarProps) {
         >
           <LayoutGrid className="h-4 w-4" />
         </Button>
-        <Button aria-label="Settings" size="icon" variant="ghost">
+        <Button aria-label="Settings" size="icon" variant="ghost" onClick={onOpenSettings}>
           <Settings className="h-4 w-4" />
         </Button>
       </div>

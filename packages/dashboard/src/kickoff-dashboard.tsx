@@ -1,7 +1,11 @@
+import { useState } from "react";
 import { Plus, Search } from "lucide-react";
 import { Button } from "@kickoff/ui";
+import { CommandPalette } from "./components/command-palette";
 import { SettingsPanel } from "./components/settings-panel";
 import { TopBar } from "./components/top-bar";
+import { WidgetLibrary } from "./components/widget-library";
+import { useDashboardInteractions, type WidgetId } from "./state/use-dashboard-interactions";
 import { useDashboardSettings } from "./state/use-dashboard-settings";
 import { RedditWidget } from "./widgets/reddit-widget";
 import { SpotifyWidget } from "./widgets/spotify-widget";
@@ -11,7 +15,24 @@ import { YouTubeHub } from "./widgets/youtube-hub";
 
 export function KickoffDashboard() {
   const { settings, actions } = useDashboardSettings();
+  const { state: interactions, actions: interactionActions } = useDashboardInteractions();
+  const [widgetLibraryOpen, setWidgetLibraryOpen] = useState(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const backgroundStyle = getBackgroundStyle(settings);
+  const visibleWidgets = new Set(interactions.visibleWidgets);
+
+  function openSettings() {
+    document.getElementById("kickoff-settings")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
+  }
+
+  function openWidgetLibrary() {
+    setCommandPaletteOpen(false);
+    setWidgetLibraryOpen(true);
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -36,7 +57,12 @@ export function KickoffDashboard() {
       <div className="relative min-h-screen">
         <TopBar
           settings={settings}
+          lastRefreshedAt={interactions.lastRefreshedAt}
+          notificationsOpen={notificationsOpen}
           onToggleEditMode={() => actions.update({ editMode: !settings.editMode })}
+          onRefresh={interactionActions.refresh}
+          onToggleNotifications={() => setNotificationsOpen((open) => !open)}
+          onOpenSettings={openSettings}
         />
 
         <main className="grid grid-cols-1 items-start xl:grid-cols-[minmax(0,1fr)_320px]">
@@ -49,11 +75,11 @@ export function KickoffDashboard() {
                 </p>
               </div>
               <div className="flex gap-2">
-                <Button variant="secondary">
+                <Button variant="secondary" onClick={() => setCommandPaletteOpen(true)}>
                   <Search className="h-4 w-4" />
                   Find
                 </Button>
-                <Button variant="primary">
+                <Button variant="primary" onClick={openWidgetLibrary}>
                   <Plus className="h-4 w-4" />
                   Add widget
                 </Button>
@@ -66,22 +92,81 @@ export function KickoffDashboard() {
               </div>
             ) : null}
 
-            <div className="grid auto-rows-min grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-3">
-              <YouTubeHub />
-              <SteamWidget />
-              <WeatherWidget />
-              <RedditWidget />
-              <SpotifyWidget />
-            </div>
+            {interactions.visibleWidgets.length > 0 ? (
+              <div className="grid auto-rows-min grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-3">
+                {visibleWidgets.has("youtube") ? (
+                  <YouTubeHub
+                    videoStatuses={interactions.videoStatuses}
+                    onSetVideoStatus={interactionActions.setVideoStatus}
+                    onRefresh={interactionActions.refresh}
+                    onHide={() => interactionActions.toggleWidget("youtube")}
+                  />
+                ) : null}
+                {visibleWidgets.has("steam") ? (
+                  <SteamWidget
+                    onRefresh={interactionActions.refresh}
+                    onHide={() => interactionActions.toggleWidget("steam")}
+                  />
+                ) : null}
+                {visibleWidgets.has("weather") ? (
+                  <WeatherWidget
+                    onRefresh={interactionActions.refresh}
+                    onHide={() => interactionActions.toggleWidget("weather")}
+                  />
+                ) : null}
+                {visibleWidgets.has("reddit") ? (
+                  <RedditWidget
+                    filter={interactions.redditFilter}
+                    onFilterChange={interactionActions.setRedditFilter}
+                    onRefresh={interactionActions.refresh}
+                    onHide={() => interactionActions.toggleWidget("reddit")}
+                  />
+                ) : null}
+                {visibleWidgets.has("spotify") ? (
+                  <SpotifyWidget
+                    onRefresh={interactionActions.refresh}
+                    onHide={() => interactionActions.toggleWidget("spotify")}
+                  />
+                ) : null}
+              </div>
+            ) : (
+              <div className="rounded-lg border border-dashed border-black/20 bg-white/46 p-8 text-center dark:border-white/20 dark:bg-black/18">
+                <h2 className="text-lg font-semibold">No widgets enabled</h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Add a widget to bring the dashboard back to life.
+                </p>
+                <Button className="mt-4" variant="primary" onClick={openWidgetLibrary}>
+                  <Plus className="h-4 w-4" />
+                  Add widget
+                </Button>
+              </div>
+            )}
           </section>
 
           <SettingsPanel
+            id="kickoff-settings"
             settings={settings}
             onChange={actions.update}
             onReset={actions.reset}
           />
         </main>
       </div>
+
+      <WidgetLibrary
+        open={widgetLibraryOpen}
+        visibleWidgets={interactions.visibleWidgets}
+        onToggle={(widgetId: WidgetId) => interactionActions.toggleWidget(widgetId)}
+        onClose={() => setWidgetLibraryOpen(false)}
+      />
+      <CommandPalette
+        open={commandPaletteOpen}
+        onClose={() => setCommandPaletteOpen(false)}
+        onOpenWidgetLibrary={openWidgetLibrary}
+        onOpenSettings={() => {
+          setCommandPaletteOpen(false);
+          openSettings();
+        }}
+      />
     </div>
   );
 }

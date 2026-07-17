@@ -3,6 +3,7 @@ import { Button, Slider, Toggle } from "@kickoff/ui";
 import type { Accent, DashboardSettings, ThemeMode } from "../types";
 
 type SettingsPanelProps = {
+  id?: string;
   settings: DashboardSettings;
   onChange(next: Partial<DashboardSettings>): void;
   onReset(): void;
@@ -11,7 +12,7 @@ type SettingsPanelProps = {
 const accentOptions: Accent[] = ["red", "cyan", "green", "gold"];
 const themeOptions: ThemeMode[] = ["dark", "light"];
 
-export function SettingsPanel({ settings, onChange, onReset }: SettingsPanelProps) {
+export function SettingsPanel({ id, settings, onChange, onReset }: SettingsPanelProps) {
   function handleImageUpload(file?: File) {
     if (!file) {
       return;
@@ -30,7 +31,10 @@ export function SettingsPanel({ settings, onChange, onReset }: SettingsPanelProp
   }
 
   return (
-    <aside className="flex min-h-0 flex-col gap-5 border-l border-black/10 bg-white/62 p-4 backdrop-blur-xl dark:border-white/10 dark:bg-black/20 xl:sticky xl:top-[65px] xl:max-h-[calc(100vh-65px)] xl:overflow-auto">
+    <aside
+      id={id}
+      className="flex min-h-0 flex-col gap-5 border-l border-black/10 bg-white/62 p-4 backdrop-blur-xl dark:border-white/10 dark:bg-black/20 xl:sticky xl:top-[65px] xl:max-h-[calc(100vh-65px)] xl:overflow-auto"
+    >
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold">Workspace</h2>

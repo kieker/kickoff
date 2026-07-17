@@ -1,12 +1,28 @@
 import { Check, Clock3, ExternalLink, Play, Star } from "lucide-react";
-import { youtubeVideos } from "@kickoff/integrations";
+import { youtubeVideos, type VideoItem } from "@kickoff/integrations";
 import { openExternal } from "@kickoff/platform";
 import { Button } from "@kickoff/ui";
 import { WidgetShell } from "../components/widget-shell";
 
-export function YouTubeHub() {
-  const priorityCount = youtubeVideos.filter((video) => video.group === "Priority").length;
-  const savedCount = youtubeVideos.filter((video) => video.status === "saved").length;
+type YouTubeHubProps = {
+  videoStatuses: Record<string, VideoItem["status"]>;
+  onSetVideoStatus(videoId: string, status: VideoItem["status"]): void;
+  onRefresh?: () => void;
+  onHide?: () => void;
+};
+
+export function YouTubeHub({
+  videoStatuses,
+  onSetVideoStatus,
+  onRefresh,
+  onHide
+}: YouTubeHubProps) {
+  const videos = youtubeVideos.map((video) => ({
+    ...video,
+    status: videoStatuses[video.id] ?? video.status
+  }));
+  const priorityCount = videos.filter((video) => video.group === "Priority").length;
+  const savedCount = videos.filter((video) => video.status === "saved").length;
 
   return (
     <WidgetShell
@@ -14,10 +30,15 @@ export function YouTubeHub() {
       title="YouTube queue"
       eyebrow={`${priorityCount} priority channels / ${savedCount} saved`}
       action={
-        <Button variant="primary" size="sm">
-          <Play className="h-4 w-4" />
-          Open queue
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="ghost" size="sm" onClick={onHide}>
+            Hide
+          </Button>
+          <Button variant="primary" size="sm" onClick={() => openExternal("https://youtube.com")}>
+            <Play className="h-4 w-4" />
+            Open queue
+          </Button>
+        </div>
       }
     >
       <div className="grid gap-3">
@@ -49,13 +70,29 @@ export function YouTubeHub() {
                     {video.channel} / {video.age}
                   </p>
                 </div>
-                <StatusIcon status={video.status} />
+                <StatusIcon status={videoStatuses[video.id] ?? video.status} />
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded bg-black/8 px-2 py-1 text-[11px] text-muted-foreground dark:bg-white/10">
                   {video.group}
                 </span>
+                <Button
+                  size="sm"
+                  variant={(videoStatuses[video.id] ?? video.status) === "seen" ? "primary" : "ghost"}
+                  onClick={() => onSetVideoStatus(video.id, "seen")}
+                >
+                  <Check className="h-3.5 w-3.5" />
+                  Seen
+                </Button>
+                <Button
+                  size="sm"
+                  variant={(videoStatuses[video.id] ?? video.status) === "saved" ? "primary" : "ghost"}
+                  onClick={() => onSetVideoStatus(video.id, "saved")}
+                >
+                  <Star className="h-3.5 w-3.5" />
+                  Save
+                </Button>
                 <Button size="sm" variant="ghost" onClick={() => openExternal(video.url)}>
                   <ExternalLink className="h-3.5 w-3.5" />
                   Open

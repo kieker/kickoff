@@ -3,20 +3,40 @@ import { redditPosts } from "@kickoff/integrations";
 import { openExternal } from "@kickoff/platform";
 import { Button } from "@kickoff/ui";
 import { WidgetShell } from "../components/widget-shell";
+import type { RedditFilter } from "../state/use-dashboard-interactions";
 
-export function RedditWidget() {
+type RedditWidgetProps = {
+  filter: RedditFilter;
+  onFilterChange(filter: RedditFilter): void;
+  onRefresh?: () => void;
+  onHide?: () => void;
+};
+
+export function RedditWidget({ filter, onFilterChange, onRefresh, onHide }: RedditWidgetProps) {
+  const posts = getFilteredPosts(filter);
+
   return (
-    <WidgetShell title="Reddit" eyebrow="hot / saved communities">
+    <WidgetShell
+      title="Reddit"
+      eyebrow={`${filter} / saved communities`}
+      onRefresh={onRefresh}
+      onHide={onHide}
+    >
       <div className="mb-3 flex gap-2">
-        {["hot", "new", "top"].map((filter) => (
-          <Button key={filter} size="sm" variant={filter === "hot" ? "primary" : "ghost"}>
-            {filter}
+        {(["hot", "new", "top"] as RedditFilter[]).map((option) => (
+          <Button
+            key={option}
+            size="sm"
+            variant={filter === option ? "primary" : "ghost"}
+            onClick={() => onFilterChange(option)}
+          >
+            {option}
           </Button>
         ))}
       </div>
 
       <div className="space-y-3">
-        {redditPosts.map((post) => (
+        {posts.map((post) => (
           <button
             key={post.id}
             type="button"
@@ -41,4 +61,21 @@ export function RedditWidget() {
       </div>
     </WidgetShell>
   );
+}
+
+function getFilteredPosts(filter: RedditFilter) {
+  if (filter === "new") {
+    return [...redditPosts].reverse();
+  }
+
+  if (filter === "top") {
+    return [...redditPosts].sort((a, b) => scoreValue(b.score) - scoreValue(a.score));
+  }
+
+  return redditPosts;
+}
+
+function scoreValue(score: string) {
+  const value = Number.parseFloat(score);
+  return score.toLowerCase().endsWith("k") ? value * 1000 : value;
 }
