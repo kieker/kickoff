@@ -153,6 +153,10 @@ apps/
       routes/
       styles/
 
+docs/
+  README.md
+  apis.md
+
 packages/
   dashboard/
     src/

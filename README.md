@@ -13,3 +13,7 @@ The beta is planned as an Electron app with a React dashboard core that can late
 - Electron-ready desktop host
 
 See [MVP_BUILD_PLAN.md](./MVP_BUILD_PLAN.md) for the full phased plan.
+
+## Docs
+
+- [API References](./docs/apis.md)

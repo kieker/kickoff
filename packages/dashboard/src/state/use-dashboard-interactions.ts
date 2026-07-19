@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { browserStorage } from "@kickoff/platform";
-import { youtubeVideos } from "@kickoff/integrations";
-import type { VideoItem } from "@kickoff/integrations";
+import { defaultWeatherLocation, youtubeVideos } from "@kickoff/integrations";
+import type { VideoItem, WeatherLocation } from "@kickoff/integrations";
 
 export type WidgetId = "youtube" | "steam" | "weather" | "reddit" | "spotify";
 export type RedditFilter = "hot" | "new" | "top";
@@ -10,6 +10,7 @@ export type DashboardInteractions = {
   visibleWidgets: WidgetId[];
   videoStatuses: Record<string, VideoItem["status"]>;
   redditFilter: RedditFilter;
+  weatherLocation: WeatherLocation;
   lastRefreshedAt?: string;
 };
 
@@ -19,7 +20,8 @@ const defaultVisibleWidgets: WidgetId[] = ["youtube", "steam", "weather", "reddi
 const defaultInteractions: DashboardInteractions = {
   visibleWidgets: defaultVisibleWidgets,
   videoStatuses: Object.fromEntries(youtubeVideos.map((video) => [video.id, video.status])),
-  redditFilter: "hot"
+  redditFilter: "hot",
+  weatherLocation: defaultWeatherLocation
 };
 
 export function useDashboardInteractions() {
@@ -54,6 +56,9 @@ export function useDashboardInteractions() {
       },
       setRedditFilter(filter: RedditFilter) {
         setState((current) => ({ ...current, redditFilter: filter }));
+      },
+      setWeatherLocation(location: WeatherLocation) {
+        setState((current) => ({ ...current, weatherLocation: location }));
       },
       setVideoStatus(videoId: string, status: VideoItem["status"]) {
         setState((current) => ({

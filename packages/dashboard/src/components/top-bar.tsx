@@ -6,20 +6,22 @@ type TopBarProps = {
   settings: DashboardSettings;
   lastRefreshedAt?: string;
   notificationsOpen: boolean;
+  settingsOpen: boolean;
   onToggleEditMode(): void;
   onRefresh(): void;
   onToggleNotifications(): void;
-  onOpenSettings(): void;
+  onToggleSettings(): void;
 };
 
 export function TopBar({
   settings,
   lastRefreshedAt,
   notificationsOpen,
+  settingsOpen,
   onToggleEditMode,
   onRefresh,
   onToggleNotifications,
-  onOpenSettings
+  onToggleSettings
 }: TopBarProps) {
   return (
     <header className="sticky top-0 z-20 flex items-center justify-between gap-4 border-b border-black/10 bg-white/58 px-5 py-3 backdrop-blur-xl dark:border-white/10 dark:bg-black/18">
@@ -70,7 +72,12 @@ export function TopBar({
         >
           <LayoutGrid className="h-4 w-4" />
         </Button>
-        <Button aria-label="Settings" size="icon" variant="ghost" onClick={onOpenSettings}>
+        <Button
+          aria-label={settingsOpen ? "Hide settings" : "Show settings"}
+          size="icon"
+          variant={settingsOpen ? "primary" : "ghost"}
+          onClick={onToggleSettings}
+        >
           <Settings className="h-4 w-4" />
         </Button>
       </div>

@@ -19,15 +19,9 @@ export function KickoffDashboard() {
   const [widgetLibraryOpen, setWidgetLibraryOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const backgroundStyle = getBackgroundStyle(settings);
   const visibleWidgets = new Set(interactions.visibleWidgets);
-
-  function openSettings() {
-    document.getElementById("kickoff-settings")?.scrollIntoView({
-      behavior: "smooth",
-      block: "start"
-    });
-  }
 
   function openWidgetLibrary() {
     setCommandPaletteOpen(false);
@@ -59,13 +53,14 @@ export function KickoffDashboard() {
           settings={settings}
           lastRefreshedAt={interactions.lastRefreshedAt}
           notificationsOpen={notificationsOpen}
+          settingsOpen={settingsOpen}
           onToggleEditMode={() => actions.update({ editMode: !settings.editMode })}
           onRefresh={interactionActions.refresh}
           onToggleNotifications={() => setNotificationsOpen((open) => !open)}
-          onOpenSettings={openSettings}
+          onToggleSettings={() => setSettingsOpen((open) => !open)}
         />
 
-        <main className="grid grid-cols-1 items-start xl:grid-cols-[minmax(0,1fr)_320px]">
+        <main className="grid grid-cols-1 items-start">
           <section className="min-w-0 p-4 lg:p-5">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div>
@@ -110,6 +105,8 @@ export function KickoffDashboard() {
                 ) : null}
                 {visibleWidgets.has("weather") ? (
                   <WeatherWidget
+                    location={interactions.weatherLocation}
+                    onLocationChange={interactionActions.setWeatherLocation}
                     onRefresh={interactionActions.refresh}
                     onHide={() => interactionActions.toggleWidget("weather")}
                   />
@@ -145,9 +142,11 @@ export function KickoffDashboard() {
 
           <SettingsPanel
             id="kickoff-settings"
+            open={settingsOpen}
             settings={settings}
             onChange={actions.update}
             onReset={actions.reset}
+            onClose={() => setSettingsOpen(false)}
           />
         </main>
       </div>
@@ -164,7 +163,7 @@ export function KickoffDashboard() {
         onOpenWidgetLibrary={openWidgetLibrary}
         onOpenSettings={() => {
           setCommandPaletteOpen(false);
-          openSettings();
+          setSettingsOpen(true);
         }}
       />
     </div>

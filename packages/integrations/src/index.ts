@@ -27,6 +27,14 @@ export type RedditPost = {
   url: string;
 };
 
+export {
+  defaultWeatherLocation,
+  describeWeatherCode,
+  fetchWeatherForecast,
+  searchWeatherLocations
+} from "./weather";
+export type { WeatherForecast, WeatherLocation } from "./weather";
+
 export const youtubeVideos: VideoItem[] = [
   {
     id: "yt-1",

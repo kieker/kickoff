@@ -1,18 +1,27 @@
-import { ImagePlus, RotateCcw } from "lucide-react";
-import { Button, Slider, Toggle } from "@kickoff/ui";
+import { ImagePlus, RotateCcw, X } from "lucide-react";
+import { Button, cn, Slider, Toggle } from "@kickoff/ui";
 import type { Accent, DashboardSettings, ThemeMode } from "../types";
 
 type SettingsPanelProps = {
   id?: string;
+  open: boolean;
   settings: DashboardSettings;
   onChange(next: Partial<DashboardSettings>): void;
   onReset(): void;
+  onClose(): void;
 };
 
 const accentOptions: Accent[] = ["red", "cyan", "green", "gold"];
 const themeOptions: ThemeMode[] = ["dark", "light"];
 
-export function SettingsPanel({ id, settings, onChange, onReset }: SettingsPanelProps) {
+export function SettingsPanel({
+  id,
+  open,
+  settings,
+  onChange,
+  onReset,
+  onClose
+}: SettingsPanelProps) {
   function handleImageUpload(file?: File) {
     if (!file) {
       return;
@@ -31,21 +40,40 @@ export function SettingsPanel({ id, settings, onChange, onReset }: SettingsPanel
   }
 
   return (
-    <aside
-      id={id}
-      className="flex min-h-0 flex-col gap-5 border-l border-black/10 bg-white/62 p-4 backdrop-blur-xl dark:border-white/10 dark:bg-black/20 xl:sticky xl:top-[65px] xl:max-h-[calc(100vh-65px)] xl:overflow-auto"
-    >
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h2 className="text-sm font-semibold">Workspace</h2>
-          <p className="text-xs text-muted-foreground">Appearance and beta controls</p>
+    <>
+      <button
+        type="button"
+        aria-label="Close settings backdrop"
+        className={cn(
+          "fixed inset-0 z-30 bg-black/36 backdrop-blur-sm transition-opacity xl:hidden",
+          open ? "opacity-100" : "pointer-events-none opacity-0"
+        )}
+        onClick={onClose}
+      />
+      <aside
+        id={id}
+        aria-hidden={!open}
+        className={cn(
+          "fixed right-0 top-[65px] z-40 flex h-[calc(100vh-65px)] w-[min(360px,calc(100vw-24px))] flex-col gap-5 overflow-auto border-l border-black/10 bg-white/82 p-4 shadow-panel backdrop-blur-xl transition-transform duration-300 ease-out dark:border-white/10 dark:bg-black/72",
+          open ? "translate-x-0" : "pointer-events-none translate-x-full"
+        )}
+      >
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold">Workspace</h2>
+            <p className="text-xs text-muted-foreground">Appearance and beta controls</p>
+          </div>
+          <div className="flex gap-2">
+            <Button aria-label="Reset appearance" size="icon" variant="ghost" onClick={onReset}>
+              <RotateCcw className="h-4 w-4" />
+            </Button>
+            <Button aria-label="Close settings" size="icon" variant="ghost" onClick={onClose}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
-        <Button aria-label="Reset appearance" size="icon" variant="ghost" onClick={onReset}>
-          <RotateCcw className="h-4 w-4" />
-        </Button>
-      </div>
 
-      <div className="space-y-3">
+        <div className="space-y-3">
         <p className="text-xs font-medium text-muted-foreground">Theme</p>
         <div className="grid grid-cols-2 gap-2">
           {themeOptions.map((theme) => (
@@ -140,6 +168,7 @@ export function SettingsPanel({ id, settings, onChange, onReset }: SettingsPanel
           onChange={(event) => onChange({ blur: Number(event.currentTarget.value) })}
         />
       </div>
-    </aside>
+      </aside>
+    </>
   );
 }
