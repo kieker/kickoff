@@ -12,6 +12,7 @@ import { WidgetShell } from "../components/widget-shell";
 
 type WeatherWidgetProps = {
   location: WeatherLocation;
+  showIcon: boolean;
   onLocationChange(location: WeatherLocation): void;
   onRefresh?: () => void;
   onHide?: () => void;
@@ -19,6 +20,7 @@ type WeatherWidgetProps = {
 
 export function WeatherWidget({
   location,
+  showIcon,
   onLocationChange,
   onRefresh,
   onHide
@@ -55,6 +57,7 @@ export function WeatherWidget({
     <WidgetShell
       title="Weather"
       eyebrow={locationLabel}
+      icon={showIcon ? <CloudSun className="h-5 w-5" /> : undefined}
       onRefresh={refreshWeather}
       onHide={onHide}
       action={

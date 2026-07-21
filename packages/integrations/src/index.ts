@@ -1,13 +1,13 @@
-export type VideoItem = {
-  id: string;
-  title: string;
-  channel: string;
-  age: string;
-  duration: string;
-  status: "new" | "seen" | "saved";
-  group: string;
-  url: string;
-};
+export { getDemoYouTubeVideos, getYouTubeClientConfig, getYouTubeConnectionState } from "./youtube";
+export { youtubeVideos } from "./youtube";
+export type { YouTubeVideoItem as VideoItem } from "./youtube";
+export type {
+  YouTubeChannelSummary,
+  YouTubeClientConfig,
+  YouTubeConnectionState,
+  YouTubeVideoItem,
+  YouTubeVideoStatus
+} from "./youtube";
 
 export type GameItem = {
   id: string;
@@ -34,49 +34,6 @@ export {
   searchWeatherLocations
 } from "./weather";
 export type { WeatherForecast, WeatherLocation } from "./weather";
-
-export const youtubeVideos: VideoItem[] = [
-  {
-    id: "yt-1",
-    title: "Designing a better desktop media hub",
-    channel: "Interface Lab",
-    age: "18m ago",
-    duration: "12:42",
-    status: "new",
-    group: "Priority",
-    url: "https://youtube.com"
-  },
-  {
-    id: "yt-2",
-    title: "Steam Deck OLED: one year later",
-    channel: "Digital Foundry",
-    age: "1h ago",
-    duration: "23:08",
-    status: "saved",
-    group: "Gaming",
-    url: "https://youtube.com"
-  },
-  {
-    id: "yt-3",
-    title: "React architecture patterns for apps that scale",
-    channel: "Frontend Guild",
-    age: "3h ago",
-    duration: "31:15",
-    status: "new",
-    group: "Build",
-    url: "https://youtube.com"
-  },
-  {
-    id: "yt-4",
-    title: "The quiet beauty of useful dashboards",
-    channel: "Product Notes",
-    age: "Yesterday",
-    duration: "9:54",
-    status: "seen",
-    group: "Design",
-    url: "https://youtube.com"
-  }
-];
 
 export const steamGames: GameItem[] = [
   {

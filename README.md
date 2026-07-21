@@ -17,3 +17,4 @@ See [MVP_BUILD_PLAN.md](./MVP_BUILD_PLAN.md) for the full phased plan.
 ## Docs
 
 - [API References](./docs/apis.md)
+- [UI Notes](./docs/ui.md)

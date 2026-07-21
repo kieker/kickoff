@@ -5,8 +5,9 @@ import { CommandPalette } from "./components/command-palette";
 import { SettingsPanel } from "./components/settings-panel";
 import { TopBar } from "./components/top-bar";
 import { WidgetLibrary } from "./components/widget-library";
-import { useDashboardInteractions, type WidgetId } from "./state/use-dashboard-interactions";
+import { useDashboardInteractions } from "./state/use-dashboard-interactions";
 import { useDashboardSettings } from "./state/use-dashboard-settings";
+import type { WidgetId } from "./types";
 import { RedditWidget } from "./widgets/reddit-widget";
 import { SpotifyWidget } from "./widgets/spotify-widget";
 import { SteamWidget } from "./widgets/steam-widget";
@@ -26,6 +27,10 @@ export function KickoffDashboard() {
   function openWidgetLibrary() {
     setCommandPaletteOpen(false);
     setWidgetLibraryOpen(true);
+  }
+
+  function showWidgetIcon(widgetId: WidgetId) {
+    return settings.widgetIcons.enabled && !settings.widgetIcons.hidden[widgetId];
   }
 
   return (
@@ -93,12 +98,14 @@ export function KickoffDashboard() {
                   <YouTubeHub
                     videoStatuses={interactions.videoStatuses}
                     onSetVideoStatus={interactionActions.setVideoStatus}
+                    showIcon={showWidgetIcon("youtube")}
                     onRefresh={interactionActions.refresh}
                     onHide={() => interactionActions.toggleWidget("youtube")}
                   />
                 ) : null}
                 {visibleWidgets.has("steam") ? (
                   <SteamWidget
+                    showIcon={showWidgetIcon("steam")}
                     onRefresh={interactionActions.refresh}
                     onHide={() => interactionActions.toggleWidget("steam")}
                   />
@@ -106,6 +113,7 @@ export function KickoffDashboard() {
                 {visibleWidgets.has("weather") ? (
                   <WeatherWidget
                     location={interactions.weatherLocation}
+                    showIcon={showWidgetIcon("weather")}
                     onLocationChange={interactionActions.setWeatherLocation}
                     onRefresh={interactionActions.refresh}
                     onHide={() => interactionActions.toggleWidget("weather")}
@@ -114,6 +122,7 @@ export function KickoffDashboard() {
                 {visibleWidgets.has("reddit") ? (
                   <RedditWidget
                     filter={interactions.redditFilter}
+                    showIcon={showWidgetIcon("reddit")}
                     onFilterChange={interactionActions.setRedditFilter}
                     onRefresh={interactionActions.refresh}
                     onHide={() => interactionActions.toggleWidget("reddit")}
@@ -121,6 +130,7 @@ export function KickoffDashboard() {
                 ) : null}
                 {visibleWidgets.has("spotify") ? (
                   <SpotifyWidget
+                    showIcon={showWidgetIcon("spotify")}
                     onRefresh={interactionActions.refresh}
                     onHide={() => interactionActions.toggleWidget("spotify")}
                   />

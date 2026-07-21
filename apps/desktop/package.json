@@ -12,6 +12,10 @@
     "electron": "npm run build && electron ."
   },
   "dependencies": {
+    "@kickoff/dashboard": "file:../../packages/dashboard",
+    "@kickoff/integrations": "file:../../packages/integrations",
+    "@kickoff/platform": "file:../../packages/platform",
+    "@kickoff/ui": "file:../../packages/ui",
     "@tanstack/react-query": "^5.62.8",
     "@vitejs/plugin-react": "^4.3.4",
     "clsx": "^2.1.1",
@@ -19,6 +23,7 @@
     "lucide-react": "^0.468.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-icons": "^5.7.0",
     "tailwind-merge": "^2.5.5",
     "typescript": "^5.7.2",
     "vite": "^6.0.7",

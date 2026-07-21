@@ -1,16 +1,19 @@
 import { AudioLines, Music2 } from "lucide-react";
+import { SiSpotify } from "react-icons/si";
 import { WidgetShell } from "../components/widget-shell";
 
 type SpotifyWidgetProps = {
+  showIcon: boolean;
   onRefresh?: () => void;
   onHide?: () => void;
 };
 
-export function SpotifyWidget({ onRefresh, onHide }: SpotifyWidgetProps) {
+export function SpotifyWidget({ showIcon, onRefresh, onHide }: SpotifyWidgetProps) {
   return (
     <WidgetShell
       title="Now playing"
       eyebrow="Spotify phase two"
+      icon={showIcon ? <SiSpotify className="h-5 w-5" /> : undefined}
       onRefresh={onRefresh}
       onHide={onHide}
     >

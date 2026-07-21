@@ -1,4 +1,5 @@
 import { MessageCircle, TrendingUp } from "lucide-react";
+import { SiReddit } from "react-icons/si";
 import { redditPosts } from "@kickoff/integrations";
 import { openExternal } from "@kickoff/platform";
 import { Button } from "@kickoff/ui";
@@ -7,18 +8,26 @@ import type { RedditFilter } from "../state/use-dashboard-interactions";
 
 type RedditWidgetProps = {
   filter: RedditFilter;
+  showIcon: boolean;
   onFilterChange(filter: RedditFilter): void;
   onRefresh?: () => void;
   onHide?: () => void;
 };
 
-export function RedditWidget({ filter, onFilterChange, onRefresh, onHide }: RedditWidgetProps) {
+export function RedditWidget({
+  filter,
+  showIcon,
+  onFilterChange,
+  onRefresh,
+  onHide
+}: RedditWidgetProps) {
   const posts = getFilteredPosts(filter);
 
   return (
     <WidgetShell
       title="Reddit"
       eyebrow={`${filter} / saved communities`}
+      icon={showIcon ? <SiReddit className="h-5 w-5" /> : undefined}
       onRefresh={onRefresh}
       onHide={onHide}
     >

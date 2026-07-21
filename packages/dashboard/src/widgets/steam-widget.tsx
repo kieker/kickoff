@@ -1,15 +1,23 @@
 import { Gamepad2, Trophy } from "lucide-react";
+import { SiSteam } from "react-icons/si";
 import { steamGames } from "@kickoff/integrations";
 import { WidgetShell } from "../components/widget-shell";
 
 type SteamWidgetProps = {
+  showIcon: boolean;
   onRefresh?: () => void;
   onHide?: () => void;
 };
 
-export function SteamWidget({ onRefresh, onHide }: SteamWidgetProps) {
+export function SteamWidget({ showIcon, onRefresh, onHide }: SteamWidgetProps) {
   return (
-    <WidgetShell title="Steam" eyebrow="recently played" onRefresh={onRefresh} onHide={onHide}>
+    <WidgetShell
+      title="Steam"
+      eyebrow="recently played"
+      icon={showIcon ? <SiSteam className="h-5 w-5" /> : undefined}
+      onRefresh={onRefresh}
+      onHide={onHide}
+    >
       <div className="mb-4 flex items-center gap-3 rounded-md border border-black/10 bg-white/46 p-3 dark:border-white/10 dark:bg-white/8">
         <div className="grid h-11 w-11 place-items-center rounded-md bg-cyan-500/22 text-cyan-100">
           <Gamepad2 className="h-5 w-5" />

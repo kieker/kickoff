@@ -1,6 +1,8 @@
-import { Check, Gamepad2, Music2, Newspaper, PlaySquare, Plus, X } from "lucide-react";
+import { Check, Newspaper, Plus, X } from "lucide-react";
+import { SiReddit, SiSpotify, SiSteam, SiYoutube } from "react-icons/si";
 import { Button } from "@kickoff/ui";
-import type { WidgetId } from "../state/use-dashboard-interactions";
+import type { WidgetId } from "../types";
+import type { ComponentType } from "react";
 
 type WidgetLibraryProps = {
   open: boolean;
@@ -13,19 +15,19 @@ const widgets: Array<{
   id: WidgetId;
   title: string;
   description: string;
-  icon: typeof PlaySquare;
+  icon: ComponentType<{ className?: string }>;
 }> = [
   {
     id: "youtube",
     title: "YouTube queue",
     description: "Priority videos, saved clips, and local watch state.",
-    icon: PlaySquare
+    icon: SiYoutube
   },
   {
     id: "steam",
     title: "Steam",
     description: "Profile snapshot and recently played games.",
-    icon: Gamepad2
+    icon: SiSteam
   },
   {
     id: "weather",
@@ -37,13 +39,13 @@ const widgets: Array<{
     id: "reddit",
     title: "Reddit",
     description: "Community posts with local hot, new, and top filters.",
-    icon: Newspaper
+    icon: SiReddit
   },
   {
     id: "spotify",
     title: "Now playing",
     description: "Phase-two Spotify placeholder widget.",
-    icon: Music2
+    icon: SiSpotify
   }
 ];
 

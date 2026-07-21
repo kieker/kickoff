@@ -1,6 +1,6 @@
 import { ImagePlus, RotateCcw, X } from "lucide-react";
 import { Button, cn, Slider, Toggle } from "@kickoff/ui";
-import type { Accent, DashboardSettings, ThemeMode } from "../types";
+import type { Accent, DashboardSettings, ThemeMode, WidgetId } from "../types";
 
 type SettingsPanelProps = {
   id?: string;
@@ -11,8 +11,15 @@ type SettingsPanelProps = {
   onClose(): void;
 };
 
-const accentOptions: Accent[] = ["red", "cyan", "green", "gold"];
+const accentOptions: Accent[] = ["red", "cyan", "green", "gold", "white"];
 const themeOptions: ThemeMode[] = ["dark", "light"];
+const widgetIconOptions: Array<{ id: WidgetId; label: string }> = [
+  { id: "youtube", label: "YouTube" },
+  { id: "steam", label: "Steam" },
+  { id: "weather", label: "Weather" },
+  { id: "reddit", label: "Reddit" },
+  { id: "spotify", label: "Spotify" }
+];
 
 export function SettingsPanel({
   id,
@@ -37,6 +44,18 @@ export function SettingsPanel({
       }
     };
     reader.readAsDataURL(file);
+  }
+
+  function setWidgetIcon(widgetId: WidgetId, visible: boolean) {
+    onChange({
+      widgetIcons: {
+        ...settings.widgetIcons,
+        hidden: {
+          ...settings.widgetIcons.hidden,
+          [widgetId]: !visible
+        }
+      }
+    });
   }
 
   return (
@@ -90,7 +109,7 @@ export function SettingsPanel({
 
       <div className="space-y-3">
         <p className="text-xs font-medium text-muted-foreground">Accent</p>
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-5 gap-2">
           {accentOptions.map((accent) => (
             <button
               key={accent}
@@ -105,8 +124,13 @@ export function SettingsPanel({
                       ? "#0891b2"
                       : accent === "green"
                         ? "#16a34a"
-                        : "#ca8a04",
-                outline: settings.accent === accent ? "2px solid white" : "none"
+                        : accent === "gold"
+                          ? "#ca8a04"
+                          : "#ffffff",
+                boxShadow:
+                  settings.accent === accent
+                    ? "0 0 0 2px hsl(var(--foreground)), 0 0 0 4px hsl(var(--accent))"
+                    : "none"
               }}
               onClick={() => onChange({ accent })}
             />
@@ -141,6 +165,44 @@ export function SettingsPanel({
             onChange={(event) => handleImageUpload(event.target.files?.[0])}
           />
         </label>
+      </div>
+
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-medium text-muted-foreground">Widget icons</p>
+            <p className="text-[11px] text-muted-foreground">Global and per-widget visibility</p>
+          </div>
+          <Toggle
+            pressed={settings.widgetIcons.enabled}
+            onClick={() =>
+              onChange({
+                widgetIcons: {
+                  ...settings.widgetIcons,
+                  enabled: !settings.widgetIcons.enabled
+                }
+              })
+            }
+          >
+            {settings.widgetIcons.enabled ? "shown" : "hidden"}
+          </Toggle>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          {widgetIconOptions.map((widget) => {
+            const visible = !settings.widgetIcons.hidden[widget.id];
+            return (
+              <Toggle
+                key={widget.id}
+                pressed={settings.widgetIcons.enabled && visible}
+                disabled={!settings.widgetIcons.enabled}
+                onClick={() => setWidgetIcon(widget.id, !visible)}
+              >
+                {widget.label}
+              </Toggle>
+            );
+          })}
+        </div>
       </div>
 
       <div className="space-y-3">

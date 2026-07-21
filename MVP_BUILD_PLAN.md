@@ -156,6 +156,9 @@ apps/
 docs/
   README.md
   apis.md
+  integrations/
+    youtube.md
+  ui.md
 
 packages/
   dashboard/

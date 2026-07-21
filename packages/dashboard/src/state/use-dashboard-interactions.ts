@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { browserStorage } from "@kickoff/platform";
 import { defaultWeatherLocation, youtubeVideos } from "@kickoff/integrations";
 import type { VideoItem, WeatherLocation } from "@kickoff/integrations";
+import type { WidgetId } from "../types";
 
-export type WidgetId = "youtube" | "steam" | "weather" | "reddit" | "spotify";
 export type RedditFilter = "hot" | "new" | "top";
 
 export type DashboardInteractions = {

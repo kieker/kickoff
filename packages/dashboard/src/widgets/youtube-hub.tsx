@@ -1,4 +1,5 @@
 import { Check, Clock3, ExternalLink, Play, Star } from "lucide-react";
+import { SiYoutube } from "react-icons/si";
 import { youtubeVideos, type VideoItem } from "@kickoff/integrations";
 import { openExternal } from "@kickoff/platform";
 import { Button } from "@kickoff/ui";
@@ -7,6 +8,7 @@ import { WidgetShell } from "../components/widget-shell";
 type YouTubeHubProps = {
   videoStatuses: Record<string, VideoItem["status"]>;
   onSetVideoStatus(videoId: string, status: VideoItem["status"]): void;
+  showIcon: boolean;
   onRefresh?: () => void;
   onHide?: () => void;
 };
@@ -14,6 +16,7 @@ type YouTubeHubProps = {
 export function YouTubeHub({
   videoStatuses,
   onSetVideoStatus,
+  showIcon,
   onRefresh,
   onHide
 }: YouTubeHubProps) {
@@ -29,6 +32,7 @@ export function YouTubeHub({
       className="lg:col-span-2 lg:row-span-2"
       title="YouTube queue"
       eyebrow={`${priorityCount} priority channels / ${savedCount} saved`}
+      icon={showIcon ? <SiYoutube className="h-5 w-5" /> : undefined}
       action={
         <div className="flex gap-2">
           <Button variant="ghost" size="sm" onClick={onHide}>

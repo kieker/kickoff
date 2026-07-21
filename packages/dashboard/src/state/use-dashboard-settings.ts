@@ -9,12 +9,21 @@ const accents: Record<Accent, string> = {
   red: "2 72% 54%",
   cyan: "188 77% 44%",
   green: "143 61% 42%",
-  gold: "42 87% 55%"
+  gold: "42 87% 55%",
+  white: "0 0% 100%"
+};
+
+const accentForegrounds: Record<Accent, string> = {
+  red: "0 0% 100%",
+  cyan: "0 0% 100%",
+  green: "0 0% 100%",
+  gold: "230 14% 12%",
+  white: "230 14% 12%"
 };
 
 export function useDashboardSettings() {
   const [settings, setSettings] = useState<DashboardSettings>(() =>
-    browserStorage.get(storageKey, defaultSettings)
+    mergeSettings(browserStorage.get(storageKey, defaultSettings))
   );
 
   useEffect(() => {
@@ -25,6 +34,7 @@ export function useDashboardSettings() {
     const root = document.documentElement;
     root.classList.toggle("dark", settings.theme === "dark");
     root.style.setProperty("--accent", accents[settings.accent]);
+    root.style.setProperty("--accent-foreground", accentForegrounds[settings.accent]);
   }, [settings.accent, settings.theme]);
 
   const actions = useMemo(
@@ -40,4 +50,19 @@ export function useDashboardSettings() {
   );
 
   return { settings, actions };
+}
+
+function mergeSettings(settings: DashboardSettings): DashboardSettings {
+  return {
+    ...defaultSettings,
+    ...settings,
+    widgetIcons: {
+      ...defaultSettings.widgetIcons,
+      ...settings.widgetIcons,
+      hidden: {
+        ...defaultSettings.widgetIcons.hidden,
+        ...settings.widgetIcons?.hidden
+      }
+    }
+  };
 }

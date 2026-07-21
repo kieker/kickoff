@@ -6,6 +6,7 @@ import { Button, Card, CardContent, CardHeader, CardTitle, cn } from "@kickoff/u
 type WidgetShellProps = {
   title: string;
   eyebrow?: string;
+  icon?: ReactNode;
   action?: ReactNode;
   onHide?: () => void;
   onRefresh?: () => void;
@@ -16,6 +17,7 @@ type WidgetShellProps = {
 export function WidgetShell({
   title,
   eyebrow,
+  icon,
   action,
   onHide,
   onRefresh,
@@ -27,13 +29,24 @@ export function WidgetShell({
   return (
     <Card className={cn("min-h-0 overflow-hidden", className)}>
       <CardHeader>
-        <div className="min-w-0">
-          {eyebrow ? (
-            <p className="mb-1 text-[11px] font-medium uppercase text-muted-foreground">
-              {eyebrow}
-            </p>
+        <div className="flex min-w-0 items-start gap-3">
+          {icon ? (
+            <div
+              aria-hidden="true"
+              data-widget-icon="true"
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-accent/14 text-accent"
+            >
+              {icon}
+            </div>
           ) : null}
-          <CardTitle>{title}</CardTitle>
+          <div className="min-w-0">
+            {eyebrow ? (
+              <p className="mb-1 text-[11px] font-medium uppercase text-muted-foreground">
+                {eyebrow}
+              </p>
+            ) : null}
+            <CardTitle>{title}</CardTitle>
+          </div>
         </div>
         {action ?? (
           <div className="relative">
