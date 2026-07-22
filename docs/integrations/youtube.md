@@ -1,6 +1,6 @@
 # YouTube Integration Plan
 
-Status: **Planned**
+Status: **OAuth skeleton active**
 
 This document defines the first real YouTube integration path for Kickoff. It is intentionally implementation-facing: where credentials come from, what scopes are needed, how OAuth should work in Electron, and where the code should live.
 
@@ -52,8 +52,9 @@ Recommended desktop flow:
 - App listens for the OAuth callback using either:
   - a loopback localhost callback server, preferred for desktop OAuth, or
   - a custom app protocol later when packaging is mature.
-- Main process exchanges the authorization code for tokens.
-- Main process stores refresh tokens securely.
+- Main process receives and validates the authorization callback.
+- Main process exchanges the authorization code for tokens in the next slice.
+- Main process stores refresh tokens securely in the next slice.
 - Renderer receives only safe connection metadata and short-lived data, never refresh tokens.
 
 Do not use the older implicit browser flow for this Electron app.
@@ -161,7 +162,7 @@ packages/integrations/src/youtube/
   types.ts        # normalized Kickoff YouTube types
 
 apps/desktop/electron/
-  youtube-auth.ts # planned
+  youtube-auth.ts # OAuth PKCE callback skeleton
 ```
 
 Existing UI integration point:
@@ -174,13 +175,12 @@ The dashboard should depend on normalized Kickoff types, not raw Google API resp
 
 ## Electron Bridge Shape
 
-Future preload API sketch:
+Current preload API:
 
 ```ts
 window.kickoff.youtube.connect()
 window.kickoff.youtube.disconnect()
 window.kickoff.youtube.getStatus()
-window.kickoff.youtube.refresh()
 ```
 
 Renderer responsibilities:
@@ -211,12 +211,12 @@ Rules:
 - Documentation and setup instructions exist.
 - YouTube integration package structure exists.
 - Demo mode still works.
-- App can represent disconnected, connecting, connected, and error states.
-- OAuth design keeps refresh tokens out of the renderer.
+- App can represent demo, disconnected, connecting, connected, and error states.
+- Electron opens Google OAuth in the system browser.
+- Electron owns the loopback callback listener and keeps authorization details out of the renderer.
+- Token exchange and secure storage remain intentionally unimplemented until the next slice.
 
 ## Open Questions
 
-- Which Google account/project will own the OAuth app?
 - Should the first live feed use the authenticated channel uploads, subscriptions, or a user-selected priority channel list?
-- Should we use a fixed loopback port or dynamically select one and encode it in the authorization request?
 - Should token storage be implemented with keytar/electron-safe-storage or a small abstraction that can swap storage later?

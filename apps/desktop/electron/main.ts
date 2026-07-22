@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain, shell } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { disconnectYouTube, getYouTubeAuthStatus, startYouTubeConnect } from "./youtube-auth";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isDev = process.env.VITE_DEV_SERVER_URL !== undefined;
@@ -37,6 +38,9 @@ app.whenReady().then(async () => {
   ipcMain.handle("shell:openExternal", async (_event, url: string) => {
     await shell.openExternal(url);
   });
+  ipcMain.handle("youtube:getStatus", () => getYouTubeAuthStatus());
+  ipcMain.handle("youtube:connect", () => startYouTubeConnect());
+  ipcMain.handle("youtube:disconnect", () => disconnectYouTube());
 
   await createWindow();
 

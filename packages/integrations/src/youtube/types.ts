@@ -23,14 +23,13 @@ export type YouTubeChannelSummary = {
 };
 
 export type YouTubeConnectionState =
-  | { status: "demo" }
-  | { status: "disconnected" }
-  | { status: "connecting" }
+  | { status: "demo"; message?: string; redirectUri?: string; scope?: string }
+  | { status: "disconnected"; message?: string; redirectUri?: string; scope?: string }
+  | { status: "connecting"; message?: string; redirectUri?: string; scope?: string }
   | { status: "connected"; channel: YouTubeChannelSummary }
-  | { status: "error"; message: string };
+  | { status: "error"; message: string; redirectUri?: string; scope?: string };
 
 export type YouTubeClientConfig = {
   clientId?: string;
   demoMode: boolean;
 };
-

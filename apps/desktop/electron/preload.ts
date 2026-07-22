@@ -5,5 +5,16 @@ contextBridge.exposeInMainWorld("kickoff", {
     openExternal(url: string) {
       ipcRenderer.invoke("shell:openExternal", url);
     }
+  },
+  youtube: {
+    getStatus() {
+      return ipcRenderer.invoke("youtube:getStatus");
+    },
+    connect() {
+      return ipcRenderer.invoke("youtube:connect");
+    },
+    disconnect() {
+      return ipcRenderer.invoke("youtube:disconnect");
+    }
   }
 });

@@ -47,11 +47,35 @@ export function openExternal(url: string) {
   window.open(url, "_blank", "noopener,noreferrer");
 }
 
+export type PlatformYouTubeConnectionState =
+  | { status: "demo"; message?: string; redirectUri?: string; scope?: string }
+  | { status: "disconnected"; message?: string; redirectUri?: string; scope?: string }
+  | { status: "connecting"; message?: string; redirectUri?: string; scope?: string }
+  | { status: "connected"; message: string }
+  | { status: "error"; message: string; redirectUri?: string; scope?: string };
+
+export const youtubeBridge = {
+  async getStatus(): Promise<PlatformYouTubeConnectionState | undefined> {
+    return window.kickoff?.youtube?.getStatus();
+  },
+  async connect(): Promise<PlatformYouTubeConnectionState | undefined> {
+    return window.kickoff?.youtube?.connect();
+  },
+  async disconnect(): Promise<PlatformYouTubeConnectionState | undefined> {
+    return window.kickoff?.youtube?.disconnect();
+  }
+};
+
 declare global {
   interface Window {
     kickoff?: {
       shell: {
         openExternal(url: string): void;
+      };
+      youtube?: {
+        getStatus(): Promise<PlatformYouTubeConnectionState>;
+        connect(): Promise<PlatformYouTubeConnectionState>;
+        disconnect(): Promise<PlatformYouTubeConnectionState>;
       };
     };
   }

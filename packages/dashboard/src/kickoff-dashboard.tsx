@@ -7,6 +7,7 @@ import { TopBar } from "./components/top-bar";
 import { WidgetLibrary } from "./components/widget-library";
 import { useDashboardInteractions } from "./state/use-dashboard-interactions";
 import { useDashboardSettings } from "./state/use-dashboard-settings";
+import { useYouTubeConnection } from "./state/use-youtube-connection";
 import type { WidgetId } from "./types";
 import { RedditWidget } from "./widgets/reddit-widget";
 import { SpotifyWidget } from "./widgets/spotify-widget";
@@ -17,6 +18,7 @@ import { YouTubeHub } from "./widgets/youtube-hub";
 export function KickoffDashboard() {
   const { settings, actions } = useDashboardSettings();
   const { state: interactions, actions: interactionActions } = useDashboardInteractions();
+  const { connectionState: youtubeConnection, actions: youtubeActions } = useYouTubeConnection();
   const [widgetLibraryOpen, setWidgetLibraryOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -98,6 +100,9 @@ export function KickoffDashboard() {
                   <YouTubeHub
                     videoStatuses={interactions.videoStatuses}
                     onSetVideoStatus={interactionActions.setVideoStatus}
+                    connectionState={youtubeConnection}
+                    onConnect={youtubeActions.connect}
+                    onDisconnect={youtubeActions.disconnect}
                     showIcon={showWidgetIcon("youtube")}
                     onRefresh={interactionActions.refresh}
                     onHide={() => interactionActions.toggleWidget("youtube")}

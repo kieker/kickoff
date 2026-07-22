@@ -32,7 +32,7 @@ Notes:
 
 ## YouTube Data API
 
-Status: **Planned**
+Status: **OAuth skeleton active**
 
 Purpose:
 
@@ -47,7 +47,7 @@ Official docs:
 - [YouTube OAuth guide](https://developers.google.com/youtube/v3/guides/authentication)
 - [OAuth 2.0 for mobile and desktop apps](https://developers.google.com/youtube/v3/guides/auth/installed-apps)
 
-Planned project area:
+Project area:
 
 - `packages/integrations/src/youtube/`
 - `packages/dashboard/src/widgets/youtube-hub.tsx`
@@ -56,7 +56,9 @@ Planned project area:
 Notes:
 
 - Requires a Google Cloud project, YouTube Data API enabled, OAuth credentials, scopes, and quota management.
-- Current beta uses demo data from `packages/integrations/src/index.ts`.
+- Current beta uses demo data from `packages/integrations/src/youtube/demo-data.ts`.
+- Electron now owns the PKCE authorization URL and loopback callback skeleton.
+- Token exchange, secure token storage, and live API fetches are the next YouTube slice.
 - See [YouTube Integration Plan](./integrations/youtube.md) for implementation details.
 
 ## Steam Web API

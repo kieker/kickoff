@@ -1,6 +1,6 @@
-import { Check, Clock3, ExternalLink, Play, Star } from "lucide-react";
+import { Check, Clock3, ExternalLink, Link, Link2Off, Loader2, Play, Star } from "lucide-react";
 import { SiYoutube } from "react-icons/si";
-import { youtubeVideos, type VideoItem } from "@kickoff/integrations";
+import { youtubeVideos, type VideoItem, type YouTubeConnectionState } from "@kickoff/integrations";
 import { openExternal } from "@kickoff/platform";
 import { Button } from "@kickoff/ui";
 import { WidgetShell } from "../components/widget-shell";
@@ -8,6 +8,9 @@ import { WidgetShell } from "../components/widget-shell";
 type YouTubeHubProps = {
   videoStatuses: Record<string, VideoItem["status"]>;
   onSetVideoStatus(videoId: string, status: VideoItem["status"]): void;
+  connectionState: YouTubeConnectionState;
+  onConnect(): void;
+  onDisconnect(): void;
   showIcon: boolean;
   onRefresh?: () => void;
   onHide?: () => void;
@@ -16,8 +19,10 @@ type YouTubeHubProps = {
 export function YouTubeHub({
   videoStatuses,
   onSetVideoStatus,
+  connectionState,
+  onConnect,
+  onDisconnect,
   showIcon,
-  onRefresh,
   onHide
 }: YouTubeHubProps) {
   const videos = youtubeVideos.map((video) => ({
@@ -46,7 +51,8 @@ export function YouTubeHub({
       }
     >
       <div className="grid gap-3">
-        {youtubeVideos.map((video) => (
+        <ConnectionPanel state={connectionState} onConnect={onConnect} onDisconnect={onDisconnect} />
+        {videos.map((video) => (
           <article
             key={video.id}
             className="grid gap-3 rounded-md border border-black/10 bg-white/48 p-3 sm:grid-cols-[132px_minmax(0,1fr)] dark:border-white/10 dark:bg-black/18"
@@ -108,6 +114,91 @@ export function YouTubeHub({
       </div>
     </WidgetShell>
   );
+}
+
+function ConnectionPanel({
+  state,
+  onConnect,
+  onDisconnect
+}: {
+  state: YouTubeConnectionState;
+  onConnect(): void;
+  onDisconnect(): void;
+}) {
+  const isConnecting = state.status === "connecting";
+  const canDisconnect = state.status === "connected" || state.status === "connecting";
+  const message = getConnectionMessage(state);
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-black/10 bg-white/40 px-3 py-2 text-xs dark:border-white/10 dark:bg-black/18">
+      <div className="flex min-w-0 items-center gap-2">
+        <ConnectionStatusIcon status={state.status} />
+        <div className="min-w-0">
+          <p className="font-semibold">{getConnectionLabel(state.status)}</p>
+          <p className="truncate text-muted-foreground">{message}</p>
+        </div>
+      </div>
+      {canDisconnect ? (
+        <Button size="sm" variant="ghost" onClick={onDisconnect}>
+          <Link2Off className="h-3.5 w-3.5" />
+          Disconnect
+        </Button>
+      ) : (
+        <Button size="sm" variant="secondary" onClick={onConnect} disabled={isConnecting}>
+          {isConnecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Link className="h-3.5 w-3.5" />}
+          Connect
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function ConnectionStatusIcon({ status }: { status: YouTubeConnectionState["status"] }) {
+  if (status === "connecting") {
+    return <Loader2 className="h-4 w-4 shrink-0 animate-spin text-accent" />;
+  }
+
+  if (status === "connected") {
+    return <Check className="h-4 w-4 shrink-0 text-emerald-300" />;
+  }
+
+  if (status === "error") {
+    return <Link2Off className="h-4 w-4 shrink-0 text-red-300" />;
+  }
+
+  return <Link className="h-4 w-4 shrink-0 text-accent" />;
+}
+
+function getConnectionLabel(status: YouTubeConnectionState["status"]) {
+  switch (status) {
+    case "connected":
+      return "Connected";
+    case "connecting":
+      return "Connecting";
+    case "disconnected":
+      return "Disconnected";
+    case "error":
+      return "Needs setup";
+    case "demo":
+    default:
+      return "Demo mode";
+  }
+}
+
+function getConnectionMessage(state: YouTubeConnectionState) {
+  if ("message" in state && state.message) {
+    return state.message;
+  }
+
+  if (state.status === "disconnected") {
+    return "Ready to connect a Google account.";
+  }
+
+  if (state.status === "connected") {
+    return `Signed in as ${state.channel.title}.`;
+  }
+
+  return "Using curated beta videos until live data is connected.";
 }
 
 function StatusIcon({ status }: { status: "new" | "seen" | "saved" }) {
