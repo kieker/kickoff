@@ -2,6 +2,12 @@ import { shell } from "electron";
 import crypto from "node:crypto";
 import http from "node:http";
 import { URL } from "node:url";
+import {
+  clearYouTubeTokens,
+  readYouTubeTokens,
+  writeYouTubeTokens,
+  type StoredYouTubeTokens
+} from "./youtube-token-store";
 
 const YOUTUBE_SCOPE = "https://www.googleapis.com/auth/youtube.readonly";
 const DEFAULT_REDIRECT_PORT = 53682;
@@ -11,8 +17,35 @@ export type ElectronYouTubeConnectionState =
   | { status: "demo"; message: string; redirectUri: string; scope: string }
   | { status: "disconnected"; message?: string; redirectUri: string; scope: string }
   | { status: "connecting"; message: string; redirectUri: string; scope: string }
-  | { status: "connected"; message: string }
+  | { status: "connected"; message: string; channel?: ElectronYouTubeChannelSummary }
   | { status: "error"; message: string; redirectUri?: string; scope?: string };
+
+export type ElectronYouTubeVideosResult =
+  | { status: "demo"; message: string; videos: ElectronYouTubeVideoItem[] }
+  | { status: "connected"; videos: ElectronYouTubeVideoItem[] }
+  | { status: "error"; message: string; videos: ElectronYouTubeVideoItem[] };
+
+type ElectronYouTubeChannelSummary = {
+  id: string;
+  title: string;
+  description?: string;
+  thumbnailUrl?: string;
+  uploadsPlaylistId?: string;
+};
+
+type ElectronYouTubeVideoItem = {
+  id: string;
+  title: string;
+  channel: string;
+  channelId?: string;
+  age: string;
+  duration: string;
+  status: "new" | "seen" | "saved";
+  group: string;
+  url: string;
+  thumbnailUrl?: string;
+  publishedAt?: string;
+};
 
 type PendingAuth = {
   server: http.Server;
@@ -23,7 +56,7 @@ type PendingAuth = {
 let pendingAuth: PendingAuth | undefined;
 let currentStatus: ElectronYouTubeConnectionState | undefined;
 
-export function getYouTubeAuthStatus(): ElectronYouTubeConnectionState {
+export async function getYouTubeAuthStatus(): Promise<ElectronYouTubeConnectionState> {
   if (pendingAuth && currentStatus?.status === "connecting") {
     return currentStatus;
   }
@@ -38,13 +71,28 @@ export function getYouTubeAuthStatus(): ElectronYouTubeConnectionState {
     };
   }
 
-  return (
-    currentStatus ?? {
+  const storedTokens = await readYouTubeTokens();
+  if (!storedTokens) {
+    return {
       status: "disconnected",
       redirectUri: config.redirectUri,
       scope: YOUTUBE_SCOPE
-    }
-  );
+    };
+  }
+
+  try {
+    const tokens = await ensureFreshTokens(storedTokens, config.clientId);
+    currentStatus = await getConnectedStatus(tokens);
+    return currentStatus;
+  } catch (error) {
+    currentStatus = {
+      status: "error",
+      message: error instanceof Error ? error.message : "Could not read the YouTube connection.",
+      redirectUri: config.redirectUri,
+      scope: YOUTUBE_SCOPE
+    };
+    return currentStatus;
+  }
 }
 
 export async function startYouTubeConnect(): Promise<ElectronYouTubeConnectionState> {
@@ -101,8 +149,52 @@ export async function startYouTubeConnect(): Promise<ElectronYouTubeConnectionSt
   }
 }
 
-export function disconnectYouTube(): ElectronYouTubeConnectionState {
+export async function getYouTubeVideos(): Promise<ElectronYouTubeVideosResult> {
+  const config = getYouTubeAuthConfig();
+  if (!config.clientId) {
+    return {
+      status: "demo",
+      message: "Add YOUTUBE_CLIENT_ID to enable live YouTube videos.",
+      videos: []
+    };
+  }
+
+  try {
+    const storedTokens = await readYouTubeTokens();
+    if (!storedTokens) {
+      return {
+        status: "demo",
+        message: "Connect YouTube to load live videos.",
+        videos: []
+      };
+    }
+
+    const tokens = await ensureFreshTokens(storedTokens, config.clientId);
+    const channel = await fetchConnectedChannel(tokens.accessToken);
+    if (!channel.uploadsPlaylistId) {
+      return {
+        status: "error",
+        message: "Kickoff could not find the connected channel uploads playlist.",
+        videos: []
+      };
+    }
+
+    return {
+      status: "connected",
+      videos: await fetchUploadsPlaylistVideos(tokens.accessToken, channel.uploadsPlaylistId)
+    };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Kickoff could not load YouTube videos.",
+      videos: []
+    };
+  }
+}
+
+export async function disconnectYouTube(): Promise<ElectronYouTubeConnectionState> {
   cleanupPendingAuth();
+  await clearYouTubeTokens();
   const config = getYouTubeAuthConfig();
   const status: ElectronYouTubeConnectionState = {
     status: config.clientId ? "disconnected" : "demo",
@@ -158,7 +250,7 @@ function createCallbackServer({
   const callbackUrl = new URL(redirectUri);
 
   return new Promise<http.Server>((resolve, reject) => {
-    const server = http.createServer((request, response) => {
+    const server = http.createServer(async (request, response) => {
       if (!request.url) {
         sendCallbackResponse(response, 400, "Kickoff could not read the authorization callback.");
         return;
@@ -198,15 +290,22 @@ function createCallbackServer({
         return;
       }
 
-      currentStatus = {
-        status: "error",
-        message: "Authorization received. Token exchange and secure storage are the next integration slice.",
-        redirectUri,
-        scope: YOUTUBE_SCOPE
-      };
-      void verifier;
-      sendCallbackResponse(response, 200, "Kickoff received authorization. You can close this tab and return to the app.");
-      cleanupPendingAuth();
+      try {
+        const tokens = await exchangeAuthorizationCode({ code, redirectUri, verifier });
+        await writeYouTubeTokens(tokens);
+        currentStatus = await getConnectedStatus(tokens);
+        sendCallbackResponse(response, 200, "Kickoff connected YouTube. You can close this tab and return to the app.");
+      } catch (exchangeError) {
+        currentStatus = {
+          status: "error",
+          message: exchangeError instanceof Error ? exchangeError.message : "Kickoff could not finish YouTube authorization.",
+          redirectUri,
+          scope: YOUTUBE_SCOPE
+        };
+        sendCallbackResponse(response, 500, "Kickoff could not finish YouTube authorization. You can close this tab.");
+      } finally {
+        cleanupPendingAuth();
+      }
     });
 
     server.once("error", (error) => {
@@ -217,6 +316,284 @@ function createCallbackServer({
       resolve(server);
     });
   });
+}
+
+async function exchangeAuthorizationCode({
+  code,
+  redirectUri,
+  verifier
+}: {
+  code: string;
+  redirectUri: string;
+  verifier: string;
+}): Promise<StoredYouTubeTokens> {
+  const config = getYouTubeAuthConfig();
+  if (!config.clientId) {
+    throw new Error("YOUTUBE_CLIENT_ID is required to finish YouTube authorization.");
+  }
+
+  const params = new URLSearchParams({
+    client_id: config.clientId,
+    code,
+    code_verifier: verifier,
+    grant_type: "authorization_code",
+    redirect_uri: redirectUri
+  });
+  const tokenResponse = await postGoogleTokenRequest(params);
+
+  if (!tokenResponse.access_token) {
+    throw new Error("Google did not return a YouTube access token.");
+  }
+
+  return {
+    accessToken: tokenResponse.access_token,
+    refreshToken: tokenResponse.refresh_token,
+    expiresAt: Date.now() + (tokenResponse.expires_in ?? 3600) * 1000,
+    scope: tokenResponse.scope,
+    tokenType: tokenResponse.token_type ?? "Bearer"
+  };
+}
+
+async function ensureFreshTokens(tokens: StoredYouTubeTokens, clientId: string): Promise<StoredYouTubeTokens> {
+  if (tokens.expiresAt > Date.now() + 60_000) {
+    return tokens;
+  }
+
+  if (!tokens.refreshToken) {
+    throw new Error("The YouTube session expired. Reconnect your account.");
+  }
+
+  const tokenResponse = await postGoogleTokenRequest(
+    new URLSearchParams({
+      client_id: clientId,
+      grant_type: "refresh_token",
+      refresh_token: tokens.refreshToken
+    })
+  );
+
+  if (!tokenResponse.access_token) {
+    throw new Error("Google did not return a refreshed YouTube access token.");
+  }
+
+  const refreshedTokens: StoredYouTubeTokens = {
+    accessToken: tokenResponse.access_token,
+    refreshToken: tokenResponse.refresh_token ?? tokens.refreshToken,
+    expiresAt: Date.now() + (tokenResponse.expires_in ?? 3600) * 1000,
+    scope: tokenResponse.scope ?? tokens.scope,
+    tokenType: tokenResponse.token_type ?? tokens.tokenType
+  };
+  await writeYouTubeTokens(refreshedTokens);
+  return refreshedTokens;
+}
+
+async function getConnectedStatus(tokens: StoredYouTubeTokens): Promise<ElectronYouTubeConnectionState> {
+  try {
+    const channel = await fetchConnectedChannel(tokens.accessToken);
+    return {
+      status: "connected",
+      message: `Signed in as ${channel.title}.`,
+      channel
+    };
+  } catch {
+    return {
+      status: "connected",
+      message: "YouTube is connected. Channel details will refresh when the API is available."
+    };
+  }
+}
+
+async function fetchConnectedChannel(accessToken: string): Promise<ElectronYouTubeChannelSummary> {
+  const url = new URL("https://www.googleapis.com/youtube/v3/channels");
+  url.searchParams.set("part", "snippet,contentDetails");
+  url.searchParams.set("mine", "true");
+
+  const response = await fetch(url, {
+    headers: {
+      authorization: `Bearer ${accessToken}`
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`YouTube channel lookup failed with ${response.status}.`);
+  }
+
+  const body = (await response.json()) as YouTubeChannelsResponse;
+  const channel = body.items?.[0];
+  if (!channel) {
+    throw new Error("No YouTube channel was returned for this account.");
+  }
+
+  return {
+    id: channel.id,
+    title: channel.snippet?.title ?? "YouTube account",
+    description: channel.snippet?.description,
+    thumbnailUrl: channel.snippet?.thumbnails?.default?.url ?? channel.snippet?.thumbnails?.medium?.url,
+    uploadsPlaylistId: channel.contentDetails?.relatedPlaylists?.uploads
+  };
+}
+
+async function fetchUploadsPlaylistVideos(accessToken: string, playlistId: string): Promise<ElectronYouTubeVideoItem[]> {
+  const url = new URL("https://www.googleapis.com/youtube/v3/playlistItems");
+  url.searchParams.set("part", "snippet,contentDetails");
+  url.searchParams.set("playlistId", playlistId);
+  url.searchParams.set("maxResults", "12");
+
+  const response = await fetch(url, {
+    headers: {
+      authorization: `Bearer ${accessToken}`
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`YouTube uploads lookup failed with ${response.status}.`);
+  }
+
+  const body = (await response.json()) as YouTubePlaylistItemsResponse;
+  return (body.items ?? [])
+    .map(mapPlaylistItemToVideoItem)
+    .filter((video): video is ElectronYouTubeVideoItem => video !== undefined);
+}
+
+async function postGoogleTokenRequest(params: URLSearchParams): Promise<GoogleTokenResponse> {
+  const response = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: {
+      "content-type": "application/x-www-form-urlencoded"
+    },
+    body: params
+  });
+  const body = (await response.json()) as GoogleTokenResponse;
+
+  if (!response.ok) {
+    throw new Error(body.error_description ?? body.error ?? `Google token request failed with ${response.status}.`);
+  }
+
+  return body;
+}
+
+type GoogleTokenResponse = {
+  access_token?: string;
+  expires_in?: number;
+  refresh_token?: string;
+  scope?: string;
+  token_type?: string;
+  error?: string;
+  error_description?: string;
+};
+
+type YouTubeChannelsResponse = {
+  items?: Array<{
+    id: string;
+    snippet?: {
+      title?: string;
+      description?: string;
+      thumbnails?: {
+        default?: {
+          url?: string;
+        };
+        medium?: {
+          url?: string;
+        };
+      };
+    };
+    contentDetails?: {
+      relatedPlaylists?: {
+        uploads?: string;
+      };
+    };
+  }>;
+};
+
+type YouTubePlaylistItemsResponse = {
+  items?: YouTubePlaylistItemResource[];
+};
+
+type YouTubePlaylistItemResource = {
+  id: string;
+  snippet?: {
+    title?: string;
+    channelTitle?: string;
+    channelId?: string;
+    publishedAt?: string;
+    resourceId?: {
+      videoId?: string;
+    };
+    thumbnails?: {
+      medium?: {
+        url?: string;
+      };
+      high?: {
+        url?: string;
+      };
+      standard?: {
+        url?: string;
+      };
+      maxres?: {
+        url?: string;
+      };
+    };
+  };
+  contentDetails?: {
+    videoId?: string;
+    videoPublishedAt?: string;
+  };
+};
+
+function mapPlaylistItemToVideoItem(item: YouTubePlaylistItemResource): ElectronYouTubeVideoItem | undefined {
+  const videoId = item.contentDetails?.videoId ?? item.snippet?.resourceId?.videoId;
+  if (!videoId) {
+    return undefined;
+  }
+
+  const publishedAt = item.contentDetails?.videoPublishedAt ?? item.snippet?.publishedAt;
+  return {
+    id: videoId,
+    title: item.snippet?.title ?? "Untitled video",
+    channel: item.snippet?.channelTitle ?? "YouTube",
+    channelId: item.snippet?.channelId,
+    age: formatRelativeAge(publishedAt),
+    duration: "--:--",
+    status: "new",
+    group: "Uploads",
+    url: `https://www.youtube.com/watch?v=${videoId}`,
+    thumbnailUrl:
+      item.snippet?.thumbnails?.maxres?.url ??
+      item.snippet?.thumbnails?.standard?.url ??
+      item.snippet?.thumbnails?.high?.url ??
+      item.snippet?.thumbnails?.medium?.url,
+    publishedAt
+  };
+}
+
+function formatRelativeAge(value?: string) {
+  if (!value) {
+    return "unknown";
+  }
+
+  const publishedAt = new Date(value).getTime();
+  if (Number.isNaN(publishedAt)) {
+    return "recent";
+  }
+
+  const days = Math.max(0, Math.floor((Date.now() - publishedAt) / 86_400_000));
+  if (days === 0) {
+    return "today";
+  }
+
+  if (days === 1) {
+    return "1 day ago";
+  }
+
+  if (days < 30) {
+    return `${days} days ago`;
+  }
+
+  const months = Math.floor(days / 30);
+  if (months === 1) {
+    return "1 month ago";
+  }
+
+  return `${months} months ago`;
 }
 
 function sendCallbackResponse(response: http.ServerResponse, statusCode: number, message: string) {

@@ -51,8 +51,37 @@ export type PlatformYouTubeConnectionState =
   | { status: "demo"; message?: string; redirectUri?: string; scope?: string }
   | { status: "disconnected"; message?: string; redirectUri?: string; scope?: string }
   | { status: "connecting"; message?: string; redirectUri?: string; scope?: string }
-  | { status: "connected"; message: string }
+  | {
+      status: "connected";
+      message?: string;
+      channel?: {
+        id: string;
+        title: string;
+        description?: string;
+        thumbnailUrl?: string;
+        uploadsPlaylistId?: string;
+      };
+    }
   | { status: "error"; message: string; redirectUri?: string; scope?: string };
+
+export type PlatformYouTubeVideoItem = {
+  id: string;
+  title: string;
+  channel: string;
+  channelId?: string;
+  age: string;
+  duration: string;
+  status: "new" | "seen" | "saved";
+  group: string;
+  url: string;
+  thumbnailUrl?: string;
+  publishedAt?: string;
+};
+
+export type PlatformYouTubeVideosResult =
+  | { status: "demo"; message: string; videos: PlatformYouTubeVideoItem[] }
+  | { status: "connected"; videos: PlatformYouTubeVideoItem[] }
+  | { status: "error"; message: string; videos: PlatformYouTubeVideoItem[] };
 
 export const youtubeBridge = {
   async getStatus(): Promise<PlatformYouTubeConnectionState | undefined> {
@@ -63,6 +92,9 @@ export const youtubeBridge = {
   },
   async disconnect(): Promise<PlatformYouTubeConnectionState | undefined> {
     return window.kickoff?.youtube?.disconnect();
+  },
+  async getVideos(): Promise<PlatformYouTubeVideosResult | undefined> {
+    return window.kickoff?.youtube?.getVideos();
   }
 };
 
@@ -76,6 +108,7 @@ declare global {
         getStatus(): Promise<PlatformYouTubeConnectionState>;
         connect(): Promise<PlatformYouTubeConnectionState>;
         disconnect(): Promise<PlatformYouTubeConnectionState>;
+        getVideos(): Promise<PlatformYouTubeVideosResult>;
       };
     };
   }

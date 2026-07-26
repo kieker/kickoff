@@ -26,7 +26,7 @@ export type YouTubeConnectionState =
   | { status: "demo"; message?: string; redirectUri?: string; scope?: string }
   | { status: "disconnected"; message?: string; redirectUri?: string; scope?: string }
   | { status: "connecting"; message?: string; redirectUri?: string; scope?: string }
-  | { status: "connected"; channel: YouTubeChannelSummary }
+  | { status: "connected"; message?: string; channel?: YouTubeChannelSummary }
   | { status: "error"; message: string; redirectUri?: string; scope?: string };
 
 export type YouTubeClientConfig = {

@@ -1,6 +1,6 @@
 # YouTube Integration Plan
 
-Status: **OAuth skeleton active**
+Status: **Authenticated uploads active**
 
 This document defines the first real YouTube integration path for Kickoff. It is intentionally implementation-facing: where credentials come from, what scopes are needed, how OAuth should work in Electron, and where the code should live.
 
@@ -49,12 +49,12 @@ Recommended desktop flow:
 - Electron main process creates a PKCE verifier/challenge.
 - Renderer requests `youtube.connect()` through the preload bridge.
 - Main process opens Google's consent URL in the user's default browser.
-- App listens for the OAuth callback using either:
-  - a loopback localhost callback server, preferred for desktop OAuth, or
-  - a custom app protocol later when packaging is mature.
+- App listens for the OAuth callback using a loopback localhost callback server.
 - Main process receives and validates the authorization callback.
-- Main process exchanges the authorization code for tokens in the next slice.
-- Main process stores refresh tokens securely in the next slice.
+- Main process exchanges the authorization code for tokens.
+- Main process stores tokens with Electron `safeStorage` under the app `userData` folder.
+- Main process fetches the authenticated channel summary with `channels.list?mine=true`.
+- Main process fetches recent uploads from the authenticated channel's uploads playlist with `playlistItems.list`.
 - Renderer receives only safe connection metadata and short-lived data, never refresh tokens.
 
 Do not use the older implicit browser flow for this Electron app.
@@ -99,7 +99,8 @@ Notes:
 MVP recommendation:
 
 - Store refresh tokens from the Electron main process only.
-- Prefer OS keychain storage when we add the dependency.
+- Use Electron `safeStorage` for the current beta.
+- Keep the token file under Electron `app.getPath("userData")`.
 - Renderer should request data through typed integration APIs and should not receive refresh tokens.
 
 Temporary beta fallback, if needed:
@@ -121,7 +122,7 @@ Useful endpoints:
 - `videos.list?part=snippet,contentDetails,statistics&id=...`
   - Enriches video cards with duration and metadata.
 
-The first implemented flow can be:
+The first implemented flow is:
 
 1. Connect account.
 2. Call `channels.list` with `mine=true`.
@@ -162,7 +163,9 @@ packages/integrations/src/youtube/
   types.ts        # normalized Kickoff YouTube types
 
 apps/desktop/electron/
+  env.ts # local desktop env loader
   youtube-auth.ts # OAuth PKCE callback skeleton
+  youtube-token-store.ts # encrypted local token persistence
 ```
 
 Existing UI integration point:
@@ -181,6 +184,7 @@ Current preload API:
 window.kickoff.youtube.connect()
 window.kickoff.youtube.disconnect()
 window.kickoff.youtube.getStatus()
+window.kickoff.youtube.getVideos()
 ```
 
 Renderer responsibilities:
@@ -214,7 +218,12 @@ Rules:
 - App can represent demo, disconnected, connecting, connected, and error states.
 - Electron opens Google OAuth in the system browser.
 - Electron owns the loopback callback listener and keeps authorization details out of the renderer.
-- Token exchange and secure storage remain intentionally unimplemented until the next slice.
+- Electron exchanges authorization codes for tokens.
+- Electron stores tokens with `safeStorage`.
+- Electron can fetch the authenticated channel summary.
+- Electron can fetch recent uploads from the authenticated channel.
+- Demo videos remain the fallback when live videos are unavailable.
+- Subscription-based queue replacement remains the next slice.
 
 ## Open Questions
 

@@ -18,7 +18,11 @@ import { YouTubeHub } from "./widgets/youtube-hub";
 export function KickoffDashboard() {
   const { settings, actions } = useDashboardSettings();
   const { state: interactions, actions: interactionActions } = useDashboardInteractions();
-  const { connectionState: youtubeConnection, actions: youtubeActions } = useYouTubeConnection();
+  const {
+    connectionState: youtubeConnection,
+    videosState: youtubeVideosState,
+    actions: youtubeActions
+  } = useYouTubeConnection();
   const [widgetLibraryOpen, setWidgetLibraryOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -101,10 +105,14 @@ export function KickoffDashboard() {
                     videoStatuses={interactions.videoStatuses}
                     onSetVideoStatus={interactionActions.setVideoStatus}
                     connectionState={youtubeConnection}
+                    videos={youtubeVideosState.videos}
+                    videoSource={youtubeVideosState.source}
+                    videosLoading={youtubeVideosState.loading}
+                    videosError={youtubeVideosState.error}
                     onConnect={youtubeActions.connect}
                     onDisconnect={youtubeActions.disconnect}
                     showIcon={showWidgetIcon("youtube")}
-                    onRefresh={interactionActions.refresh}
+                    onRefresh={youtubeActions.refresh}
                     onHide={() => interactionActions.toggleWidget("youtube")}
                   />
                 ) : null}

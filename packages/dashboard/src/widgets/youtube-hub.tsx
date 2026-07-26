@@ -1,6 +1,6 @@
-import { Check, Clock3, ExternalLink, Link, Link2Off, Loader2, Play, Star } from "lucide-react";
+import { Check, Clock3, ExternalLink, Link, Link2Off, Loader2, Play, RefreshCw, Star } from "lucide-react";
 import { SiYoutube } from "react-icons/si";
-import { youtubeVideos, type VideoItem, type YouTubeConnectionState } from "@kickoff/integrations";
+import { type VideoItem, type YouTubeConnectionState } from "@kickoff/integrations";
 import { openExternal } from "@kickoff/platform";
 import { Button } from "@kickoff/ui";
 import { WidgetShell } from "../components/widget-shell";
@@ -9,6 +9,10 @@ type YouTubeHubProps = {
   videoStatuses: Record<string, VideoItem["status"]>;
   onSetVideoStatus(videoId: string, status: VideoItem["status"]): void;
   connectionState: YouTubeConnectionState;
+  videos: VideoItem[];
+  videoSource: "demo" | "connected";
+  videosLoading: boolean;
+  videosError?: string;
   onConnect(): void;
   onDisconnect(): void;
   showIcon: boolean;
@@ -20,28 +24,38 @@ export function YouTubeHub({
   videoStatuses,
   onSetVideoStatus,
   connectionState,
+  videos: rawVideos,
+  videoSource,
+  videosLoading,
+  videosError,
   onConnect,
   onDisconnect,
   showIcon,
+  onRefresh,
   onHide
 }: YouTubeHubProps) {
-  const videos = youtubeVideos.map((video) => ({
+  const videos = rawVideos.map((video) => ({
     ...video,
     status: videoStatuses[video.id] ?? video.status
   }));
   const priorityCount = videos.filter((video) => video.group === "Priority").length;
   const savedCount = videos.filter((video) => video.status === "saved").length;
+  const eyebrowPrefix = videoSource === "connected" ? "Live uploads" : "Demo queue";
 
   return (
     <WidgetShell
       className="lg:col-span-2 lg:row-span-2"
       title="YouTube queue"
-      eyebrow={`${priorityCount} priority channels / ${savedCount} saved`}
+      eyebrow={`${eyebrowPrefix} / ${priorityCount} priority / ${savedCount} saved`}
       icon={showIcon ? <SiYoutube className="h-5 w-5" /> : undefined}
       action={
         <div className="flex gap-2">
           <Button variant="ghost" size="sm" onClick={onHide}>
             Hide
+          </Button>
+          <Button variant="ghost" size="sm" onClick={onRefresh} disabled={videosLoading}>
+            <RefreshCw className={videosLoading ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
+            Refresh
           </Button>
           <Button variant="primary" size="sm" onClick={() => openExternal("https://youtube.com")}>
             <Play className="h-4 w-4" />
@@ -52,6 +66,11 @@ export function YouTubeHub({
     >
       <div className="grid gap-3">
         <ConnectionPanel state={connectionState} onConnect={onConnect} onDisconnect={onDisconnect} />
+        {videosError ? (
+          <p className="rounded-md border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-100">
+            {videosError}
+          </p>
+        ) : null}
         {videos.map((video) => (
           <article
             key={video.id}
@@ -62,6 +81,10 @@ export function YouTubeHub({
               className="group relative aspect-video overflow-hidden rounded-md bg-gradient-to-br from-red-500/60 via-zinc-900 to-cyan-500/40"
               onClick={() => openExternal(video.url)}
             >
+              {video.thumbnailUrl ? (
+                <img src={video.thumbnailUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+              ) : null}
+              <span className="absolute inset-0 bg-black/18 transition group-hover:bg-black/10" />
               <span className="absolute inset-0 grid place-items-center">
                 <span className="grid h-10 w-10 place-items-center rounded-full bg-black/62 text-white transition group-hover:scale-105">
                   <Play className="h-5 w-5 fill-current" />
@@ -195,7 +218,7 @@ function getConnectionMessage(state: YouTubeConnectionState) {
   }
 
   if (state.status === "connected") {
-    return `Signed in as ${state.channel.title}.`;
+    return state.channel ? `Signed in as ${state.channel.title}.` : "YouTube is connected.";
   }
 
   return "Using curated beta videos until live data is connected.";

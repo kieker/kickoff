@@ -32,7 +32,7 @@ Notes:
 
 ## YouTube Data API
 
-Status: **OAuth skeleton active**
+Status: **Authenticated uploads active**
 
 Purpose:
 
@@ -57,8 +57,10 @@ Notes:
 
 - Requires a Google Cloud project, YouTube Data API enabled, OAuth credentials, scopes, and quota management.
 - Current beta uses demo data from `packages/integrations/src/youtube/demo-data.ts`.
-- Electron now owns the PKCE authorization URL and loopback callback skeleton.
-- Token exchange, secure token storage, and live API fetches are the next YouTube slice.
+- Electron owns the PKCE authorization URL, loopback callback, token exchange, and secure local token storage.
+- Electron can call `channels.list?mine=true` to confirm the connected channel.
+- Electron can call `playlistItems.list` against the authenticated channel's uploads playlist.
+- Subscription-based queue replacement is the next YouTube slice.
 - See [YouTube Integration Plan](./integrations/youtube.md) for implementation details.
 
 ## Steam Web API

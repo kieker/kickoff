@@ -1,9 +1,11 @@
 import { app, BrowserWindow, ipcMain, shell } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { disconnectYouTube, getYouTubeAuthStatus, startYouTubeConnect } from "./youtube-auth";
+import { loadDesktopEnv } from "./env";
+import { disconnectYouTube, getYouTubeAuthStatus, getYouTubeVideos, startYouTubeConnect } from "./youtube-auth";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+loadDesktopEnv();
 const isDev = process.env.VITE_DEV_SERVER_URL !== undefined;
 
 async function createWindow() {
@@ -41,6 +43,7 @@ app.whenReady().then(async () => {
   ipcMain.handle("youtube:getStatus", () => getYouTubeAuthStatus());
   ipcMain.handle("youtube:connect", () => startYouTubeConnect());
   ipcMain.handle("youtube:disconnect", () => disconnectYouTube());
+  ipcMain.handle("youtube:getVideos", () => getYouTubeVideos());
 
   await createWindow();
 
