@@ -84,6 +84,9 @@ export type PlatformYouTubeVideosResult =
   | { status: "error"; message: string; videos: PlatformYouTubeVideoItem[] };
 
 export const youtubeBridge = {
+  isAvailable(): boolean {
+    return window.kickoff?.youtube !== undefined;
+  },
   async getStatus(): Promise<PlatformYouTubeConnectionState | undefined> {
     return window.kickoff?.youtube?.getStatus();
   },

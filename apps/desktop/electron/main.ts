@@ -17,7 +17,7 @@ async function createWindow() {
     title: "Kickoff",
     backgroundColor: "#111111",
     webPreferences: {
-      preload: path.join(__dirname, "preload.js"),
+      preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true
@@ -41,7 +41,10 @@ app.whenReady().then(async () => {
     await shell.openExternal(url);
   });
   ipcMain.handle("youtube:getStatus", () => getYouTubeAuthStatus());
-  ipcMain.handle("youtube:connect", () => startYouTubeConnect());
+  ipcMain.handle("youtube:connect", () => {
+    console.info("[kickoff] Starting YouTube connection flow.");
+    return startYouTubeConnect();
+  });
   ipcMain.handle("youtube:disconnect", () => disconnectYouTube());
   ipcMain.handle("youtube:getVideos", () => getYouTubeVideos());
 

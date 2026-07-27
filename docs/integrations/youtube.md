@@ -85,14 +85,15 @@ Proposed local variables:
 ```text
 VITE_YOUTUBE_DEMO_MODE=true
 YOUTUBE_CLIENT_ID=
+YOUTUBE_CLIENT_SECRET=
 YOUTUBE_REDIRECT_PORT=53682
 ```
 
 Notes:
 
 - `YOUTUBE_CLIENT_ID` is not a secret for an installed app, but it should still be kept out of source for easy account switching.
-- Do not add a client secret to the renderer.
-- If a future desktop credential includes a secret, keep it in the main process only and do not expose it through preload.
+- `YOUTUBE_CLIENT_SECRET`, when present on the Google desktop credential, is read by Electron main only.
+- Do not add a client secret to the renderer or expose it through preload.
 
 ## Token Storage
 

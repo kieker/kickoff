@@ -6,7 +6,7 @@
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit -p tsconfig.json && vite build && vite build --config vite.electron.config.ts",
+    "build": "tsc --noEmit -p tsconfig.json && vite build && vite build --config vite.electron.config.ts && vite build --config vite.preload.config.ts",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "electron": "npm run build && electron ."

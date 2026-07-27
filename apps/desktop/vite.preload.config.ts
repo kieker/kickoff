@@ -6,16 +6,16 @@ const electronExternals = ["electron", ...builtinModules, ...builtinModules.map(
 export default defineConfig({
   build: {
     outDir: "dist-electron",
-    emptyOutDir: true,
+    emptyOutDir: false,
     lib: {
-      entry: "electron/main.ts",
-      fileName: "main",
-      formats: ["es"]
+      entry: "electron/preload.ts",
+      fileName: "preload",
+      formats: ["cjs"]
     },
     rollupOptions: {
       external: electronExternals,
       output: {
-        entryFileNames: "[name].js"
+        entryFileNames: "preload.cjs"
       }
     }
   }

@@ -210,6 +210,7 @@ function getYouTubeAuthConfig() {
   const port = Number.parseInt(process.env.YOUTUBE_REDIRECT_PORT ?? "", 10) || DEFAULT_REDIRECT_PORT;
   return {
     clientId: process.env.YOUTUBE_CLIENT_ID || process.env.VITE_YOUTUBE_CLIENT_ID,
+    clientSecret: process.env.YOUTUBE_CLIENT_SECRET,
     redirectUri: `http://127.0.0.1:${port}${CALLBACK_PATH}`
   };
 }
@@ -296,13 +297,16 @@ function createCallbackServer({
         currentStatus = await getConnectedStatus(tokens);
         sendCallbackResponse(response, 200, "Kickoff connected YouTube. You can close this tab and return to the app.");
       } catch (exchangeError) {
+        const message =
+          exchangeError instanceof Error ? exchangeError.message : "Kickoff could not finish YouTube authorization.";
+        console.error("[kickoff] YouTube authorization failed:", message);
         currentStatus = {
           status: "error",
-          message: exchangeError instanceof Error ? exchangeError.message : "Kickoff could not finish YouTube authorization.",
+          message,
           redirectUri,
           scope: YOUTUBE_SCOPE
         };
-        sendCallbackResponse(response, 500, "Kickoff could not finish YouTube authorization. You can close this tab.");
+        sendCallbackResponse(response, 500, `Kickoff could not finish YouTube authorization: ${message}`);
       } finally {
         cleanupPendingAuth();
       }
@@ -339,6 +343,9 @@ async function exchangeAuthorizationCode({
     grant_type: "authorization_code",
     redirect_uri: redirectUri
   });
+  if (config.clientSecret) {
+    params.set("client_secret", config.clientSecret);
+  }
   const tokenResponse = await postGoogleTokenRequest(params);
 
   if (!tokenResponse.access_token) {
@@ -363,13 +370,17 @@ async function ensureFreshTokens(tokens: StoredYouTubeTokens, clientId: string):
     throw new Error("The YouTube session expired. Reconnect your account.");
   }
 
-  const tokenResponse = await postGoogleTokenRequest(
-    new URLSearchParams({
-      client_id: clientId,
-      grant_type: "refresh_token",
-      refresh_token: tokens.refreshToken
-    })
-  );
+  const refreshParams = new URLSearchParams({
+    client_id: clientId,
+    grant_type: "refresh_token",
+    refresh_token: tokens.refreshToken
+  });
+  const config = getYouTubeAuthConfig();
+  if (config.clientSecret) {
+    refreshParams.set("client_secret", config.clientSecret);
+  }
+
+  const tokenResponse = await postGoogleTokenRequest(refreshParams);
 
   if (!tokenResponse.access_token) {
     throw new Error("Google did not return a refreshed YouTube access token.");

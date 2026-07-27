@@ -13,6 +13,8 @@ type YouTubeHubProps = {
   videoSource: "demo" | "connected";
   videosLoading: boolean;
   videosError?: string;
+  connecting: boolean;
+  disconnecting: boolean;
   onConnect(): void;
   onDisconnect(): void;
   showIcon: boolean;
@@ -28,6 +30,8 @@ export function YouTubeHub({
   videoSource,
   videosLoading,
   videosError,
+  connecting,
+  disconnecting,
   onConnect,
   onDisconnect,
   showIcon,
@@ -65,7 +69,13 @@ export function YouTubeHub({
       }
     >
       <div className="grid gap-3">
-        <ConnectionPanel state={connectionState} onConnect={onConnect} onDisconnect={onDisconnect} />
+        <ConnectionPanel
+          state={connectionState}
+          connecting={connecting}
+          disconnecting={disconnecting}
+          onConnect={onConnect}
+          onDisconnect={onDisconnect}
+        />
         {videosError ? (
           <p className="rounded-md border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-100">
             {videosError}
@@ -141,14 +151,18 @@ export function YouTubeHub({
 
 function ConnectionPanel({
   state,
+  connecting,
+  disconnecting,
   onConnect,
   onDisconnect
 }: {
   state: YouTubeConnectionState;
+  connecting: boolean;
+  disconnecting: boolean;
   onConnect(): void;
   onDisconnect(): void;
 }) {
-  const isConnecting = state.status === "connecting";
+  const isConnecting = state.status === "connecting" || connecting;
   const canDisconnect = state.status === "connected" || state.status === "connecting";
   const message = getConnectionMessage(state);
 
@@ -162,8 +176,8 @@ function ConnectionPanel({
         </div>
       </div>
       {canDisconnect ? (
-        <Button size="sm" variant="ghost" onClick={onDisconnect}>
-          <Link2Off className="h-3.5 w-3.5" />
+        <Button size="sm" variant="ghost" onClick={onDisconnect} disabled={disconnecting}>
+          {disconnecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Link2Off className="h-3.5 w-3.5" />}
           Disconnect
         </Button>
       ) : (

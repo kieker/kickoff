@@ -18,6 +18,11 @@ type YouTubeVideosState = {
   error?: string;
 };
 
+type YouTubeActionState = {
+  connecting: boolean;
+  disconnecting: boolean;
+};
+
 export function useYouTubeConnection() {
   const [connectionState, setConnectionState] = useState<YouTubeConnectionState>(() => getYouTubeConnectionState());
   const [videosState, setVideosState] = useState<YouTubeVideosState>({
@@ -25,32 +30,76 @@ export function useYouTubeConnection() {
     source: "demo",
     loading: false
   });
+  const [actionState, setActionState] = useState<YouTubeActionState>({
+    connecting: false,
+    disconnecting: false
+  });
+
+  const refreshVideos = useCallback(async () => {
+    if (!youtubeBridge.isAvailable()) {
+      setVideosState({
+        videos: youtubeVideos,
+        source: "demo",
+        loading: false,
+        error: "Live YouTube videos are only available in the Kickoff desktop app."
+      });
+      return;
+    }
+
+    setVideosState((current) => ({ ...current, loading: true, error: undefined }));
+    const result = await youtubeBridge.getVideos();
+    setVideosState(mapVideosResult(result));
+  }, []);
 
   const refresh = useCallback(async () => {
+    if (!youtubeBridge.isAvailable()) {
+      setConnectionState({
+        status: "demo",
+        message: "Open Kickoff in the desktop app to connect YouTube."
+      });
+      return;
+    }
+
     const status = await youtubeBridge.getStatus();
     const mappedStatus = mapBridgeStatus(status);
     setConnectionState(mappedStatus);
     if (mappedStatus.status === "connected") {
       await refreshVideos();
     }
-  }, []);
+  }, [refreshVideos]);
 
   const connect = useCallback(async () => {
-    setConnectionState({ status: "connecting", message: "Opening Google authorization in your browser." });
-    const status = await youtubeBridge.connect();
-    setConnectionState(mapBridgeStatus(status));
-  }, []);
+    if (!youtubeBridge.isAvailable()) {
+      setConnectionState({
+        status: "error",
+        message: "YouTube connection is only available in the Kickoff desktop app."
+      });
+      return;
+    }
+
+    setActionState((current) => ({ ...current, connecting: true }));
+    try {
+      setConnectionState({ status: "connecting", message: "Opening Google authorization in your browser." });
+      const status = await youtubeBridge.connect();
+      const mappedStatus = mapBridgeStatus(status);
+      setConnectionState(mappedStatus);
+      if (mappedStatus.status === "connected") {
+        await refreshVideos();
+      }
+    } finally {
+      setActionState((current) => ({ ...current, connecting: false }));
+    }
+  }, [refreshVideos]);
 
   const disconnect = useCallback(async () => {
-    const status = await youtubeBridge.disconnect();
-    setConnectionState(mapBridgeStatus(status));
-    setVideosState({ videos: youtubeVideos, source: "demo", loading: false });
-  }, []);
-
-  const refreshVideos = useCallback(async () => {
-    setVideosState((current) => ({ ...current, loading: true, error: undefined }));
-    const result = await youtubeBridge.getVideos();
-    setVideosState(mapVideosResult(result));
+    setActionState((current) => ({ ...current, disconnecting: true }));
+    try {
+      const status = await youtubeBridge.disconnect();
+      setConnectionState(mapBridgeStatus(status));
+      setVideosState({ videos: youtubeVideos, source: "demo", loading: false });
+    } finally {
+      setActionState((current) => ({ ...current, disconnecting: false }));
+    }
   }, []);
 
   useEffect(() => {
@@ -74,6 +123,7 @@ export function useYouTubeConnection() {
   return {
     connectionState,
     videosState,
+    actionState,
     actions: {
       connect,
       disconnect,
@@ -109,7 +159,10 @@ function mapVideosResult(result: PlatformYouTubeVideosResult | undefined): YouTu
       videos: youtubeVideos,
       source: "demo",
       loading: false,
-      error: result.status === "error" ? result.message : undefined
+      error:
+        result.status === "error"
+          ? result.message
+          : "No live uploads were returned yet. Showing the demo queue for now."
     };
   }
 

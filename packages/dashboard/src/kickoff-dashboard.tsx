@@ -21,6 +21,7 @@ export function KickoffDashboard() {
   const {
     connectionState: youtubeConnection,
     videosState: youtubeVideosState,
+    actionState: youtubeActionState,
     actions: youtubeActions
   } = useYouTubeConnection();
   const [widgetLibraryOpen, setWidgetLibraryOpen] = useState(false);
@@ -109,6 +110,8 @@ export function KickoffDashboard() {
                     videoSource={youtubeVideosState.source}
                     videosLoading={youtubeVideosState.loading}
                     videosError={youtubeVideosState.error}
+                    connecting={youtubeActionState.connecting}
+                    disconnecting={youtubeActionState.disconnecting}
                     onConnect={youtubeActions.connect}
                     onDisconnect={youtubeActions.disconnect}
                     showIcon={showWidgetIcon("youtube")}
