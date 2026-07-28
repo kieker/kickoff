@@ -1,6 +1,6 @@
 # YouTube Integration Plan
 
-Status: **Authenticated uploads active**
+Status: **Authenticated subscription feed active**
 
 This document defines the first real YouTube integration path for Kickoff. It is intentionally implementation-facing: where credentials come from, what scopes are needed, how OAuth should work in Electron, and where the code should live.
 
@@ -224,7 +224,15 @@ Rules:
 - Electron can fetch the authenticated channel summary.
 - Electron can fetch recent uploads from the authenticated channel.
 - Demo videos remain the fallback when live videos are unavailable.
-- Subscription-based queue replacement remains the next slice.
+- Subscription uploads replace the connected account's own uploads in the live queue.
+- A bounded channel set and ten-minute in-memory cache protect API quota.
+- Priority channels and seen/saved state persist locally in the dashboard.
+- Saved videos retain a local metadata snapshot and can belong to multiple user-created tags.
+
+## Known Follow-ups
+
+- Manual refresh currently does not reliably surface newly published subscription videos; investigate API freshness,
+  playlist selection, and cache-bypass behavior separately from the saved-library work.
 
 ## Open Questions
 

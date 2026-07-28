@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Plus, Search } from "lucide-react";
 import { Button } from "@kickoff/ui";
 import { CommandPalette } from "./components/command-palette";
+import { SavedLibrary } from "./components/saved-library";
 import { SettingsPanel } from "./components/settings-panel";
 import { TopBar } from "./components/top-bar";
 import { WidgetLibrary } from "./components/widget-library";
@@ -28,6 +29,8 @@ export function KickoffDashboard() {
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [savedLibraryOpen, setSavedLibraryOpen] = useState(false);
+  const [selectedSavedTag, setSelectedSavedTag] = useState<string>();
   const backgroundStyle = getBackgroundStyle(settings);
   const visibleWidgets = new Set(interactions.visibleWidgets);
 
@@ -105,6 +108,14 @@ export function KickoffDashboard() {
                   <YouTubeHub
                     videoStatuses={interactions.videoStatuses}
                     onSetVideoStatus={interactionActions.setVideoStatus}
+                    savedVideos={interactions.savedVideos}
+                    onSaveVideo={interactionActions.saveVideo}
+                    onOpenSavedLibrary={(tag) => {
+                      setSelectedSavedTag(tag);
+                      setSavedLibraryOpen(true);
+                    }}
+                    priorityChannelIds={interactions.priorityChannelIds}
+                    onTogglePriorityChannel={interactionActions.togglePriorityChannel}
                     connectionState={youtubeConnection}
                     videos={youtubeVideosState.videos}
                     videoSource={youtubeVideosState.source}
@@ -115,7 +126,7 @@ export function KickoffDashboard() {
                     onConnect={youtubeActions.connect}
                     onDisconnect={youtubeActions.disconnect}
                     showIcon={showWidgetIcon("youtube")}
-                    onRefresh={youtubeActions.refresh}
+                    onRefresh={() => youtubeActions.refreshVideos(true)}
                     onHide={() => interactionActions.toggleWidget("youtube")}
                   />
                 ) : null}
@@ -191,6 +202,16 @@ export function KickoffDashboard() {
           setCommandPaletteOpen(false);
           setSettingsOpen(true);
         }}
+      />
+      <SavedLibrary
+        open={savedLibraryOpen}
+        videos={Object.values(interactions.savedVideos).sort((left, right) =>
+          right.savedAt.localeCompare(left.savedAt)
+        )}
+        selectedTag={selectedSavedTag}
+        onSelectTag={setSelectedSavedTag}
+        onRemove={interactionActions.removeSavedVideo}
+        onClose={() => setSavedLibraryOpen(false)}
       />
     </div>
   );

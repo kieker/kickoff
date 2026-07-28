@@ -35,7 +35,7 @@ export function useYouTubeConnection() {
     disconnecting: false
   });
 
-  const refreshVideos = useCallback(async () => {
+  const refreshVideos = useCallback(async (forceRefresh = false) => {
     if (!youtubeBridge.isAvailable()) {
       setVideosState({
         videos: youtubeVideos,
@@ -47,7 +47,7 @@ export function useYouTubeConnection() {
     }
 
     setVideosState((current) => ({ ...current, loading: true, error: undefined }));
-    const result = await youtubeBridge.getVideos();
+    const result = await youtubeBridge.getVideos(forceRefresh);
     setVideosState(mapVideosResult(result));
   }, []);
 

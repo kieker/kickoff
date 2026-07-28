@@ -55,6 +55,14 @@ type PendingAuth = {
 
 let pendingAuth: PendingAuth | undefined;
 let currentStatus: ElectronYouTubeConnectionState | undefined;
+let cachedSubscriptionFeed:
+  | { accessToken: string; expiresAt: number; videos: ElectronYouTubeVideoItem[] }
+  | undefined;
+
+const SUBSCRIPTION_FEED_TTL_MS = 10 * 60_000;
+const MAX_SUBSCRIPTIONS = 12;
+const UPLOADS_PER_CHANNEL = 3;
+const MAX_FEED_VIDEOS = 18;
 
 export async function getYouTubeAuthStatus(): Promise<ElectronYouTubeConnectionState> {
   if (pendingAuth && currentStatus?.status === "connecting") {
@@ -149,7 +157,7 @@ export async function startYouTubeConnect(): Promise<ElectronYouTubeConnectionSt
   }
 }
 
-export async function getYouTubeVideos(): Promise<ElectronYouTubeVideosResult> {
+export async function getYouTubeVideos(forceRefresh = false): Promise<ElectronYouTubeVideosResult> {
   const config = getYouTubeAuthConfig();
   if (!config.clientId) {
     return {
@@ -170,18 +178,24 @@ export async function getYouTubeVideos(): Promise<ElectronYouTubeVideosResult> {
     }
 
     const tokens = await ensureFreshTokens(storedTokens, config.clientId);
-    const channel = await fetchConnectedChannel(tokens.accessToken);
-    if (!channel.uploadsPlaylistId) {
-      return {
-        status: "error",
-        message: "Kickoff could not find the connected channel uploads playlist.",
-        videos: []
-      };
+    if (
+      !forceRefresh &&
+      cachedSubscriptionFeed &&
+      cachedSubscriptionFeed.accessToken === tokens.accessToken &&
+      cachedSubscriptionFeed.expiresAt > Date.now()
+    ) {
+      return { status: "connected", videos: cachedSubscriptionFeed.videos };
     }
 
+    const videos = await fetchSubscriptionFeed(tokens.accessToken);
+    cachedSubscriptionFeed = {
+      accessToken: tokens.accessToken,
+      expiresAt: Date.now() + SUBSCRIPTION_FEED_TTL_MS,
+      videos
+    };
     return {
       status: "connected",
-      videos: await fetchUploadsPlaylistVideos(tokens.accessToken, channel.uploadsPlaylistId)
+      videos
     };
   } catch (error) {
     return {
@@ -194,6 +208,7 @@ export async function getYouTubeVideos(): Promise<ElectronYouTubeVideosResult> {
 
 export async function disconnectYouTube(): Promise<ElectronYouTubeConnectionState> {
   cleanupPendingAuth();
+  cachedSubscriptionFeed = undefined;
   await clearYouTubeTokens();
   const config = getYouTubeAuthConfig();
   const status: ElectronYouTubeConnectionState = {
@@ -447,7 +462,7 @@ async function fetchUploadsPlaylistVideos(accessToken: string, playlistId: strin
   const url = new URL("https://www.googleapis.com/youtube/v3/playlistItems");
   url.searchParams.set("part", "snippet,contentDetails");
   url.searchParams.set("playlistId", playlistId);
-  url.searchParams.set("maxResults", "12");
+  url.searchParams.set("maxResults", String(UPLOADS_PER_CHANNEL));
 
   const response = await fetch(url, {
     headers: {
@@ -455,14 +470,78 @@ async function fetchUploadsPlaylistVideos(accessToken: string, playlistId: strin
     }
   });
 
-  if (!response.ok) {
-    throw new Error(`YouTube uploads lookup failed with ${response.status}.`);
-  }
+  await assertYouTubeResponse(response, "uploads lookup");
 
   const body = (await response.json()) as YouTubePlaylistItemsResponse;
   return (body.items ?? [])
     .map(mapPlaylistItemToVideoItem)
     .filter((video): video is ElectronYouTubeVideoItem => video !== undefined);
+}
+
+async function fetchSubscriptionFeed(accessToken: string): Promise<ElectronYouTubeVideoItem[]> {
+  const subscriptionsUrl = new URL("https://www.googleapis.com/youtube/v3/subscriptions");
+  subscriptionsUrl.searchParams.set("part", "snippet");
+  subscriptionsUrl.searchParams.set("mine", "true");
+  subscriptionsUrl.searchParams.set("order", "relevance");
+  subscriptionsUrl.searchParams.set("maxResults", String(MAX_SUBSCRIPTIONS));
+
+  const subscriptionsResponse = await fetch(subscriptionsUrl, {
+    headers: { authorization: `Bearer ${accessToken}` }
+  });
+  await assertYouTubeResponse(subscriptionsResponse, "subscriptions lookup");
+  const subscriptions = (await subscriptionsResponse.json()) as YouTubeSubscriptionsResponse;
+  const channelIds = (subscriptions.items ?? [])
+    .map((item) => item.snippet?.resourceId?.channelId)
+    .filter((channelId): channelId is string => Boolean(channelId));
+
+  if (channelIds.length === 0) {
+    return [];
+  }
+
+  const channelsUrl = new URL("https://www.googleapis.com/youtube/v3/channels");
+  channelsUrl.searchParams.set("part", "contentDetails");
+  channelsUrl.searchParams.set("id", channelIds.join(","));
+  channelsUrl.searchParams.set("maxResults", String(MAX_SUBSCRIPTIONS));
+  const channelsResponse = await fetch(channelsUrl, {
+    headers: { authorization: `Bearer ${accessToken}` }
+  });
+  await assertYouTubeResponse(channelsResponse, "subscription channels lookup");
+  const channels = (await channelsResponse.json()) as YouTubeChannelsResponse;
+  const playlistIds = (channels.items ?? [])
+    .map((channel) => channel.contentDetails?.relatedPlaylists?.uploads)
+    .filter((playlistId): playlistId is string => Boolean(playlistId));
+
+  const batches = await Promise.allSettled(
+    playlistIds.map((playlistId) => fetchUploadsPlaylistVideos(accessToken, playlistId))
+  );
+  const videos = batches.flatMap((batch) => (batch.status === "fulfilled" ? batch.value : []));
+  if (videos.length === 0 && batches.some((batch) => batch.status === "rejected")) {
+    const failure = batches.find((batch): batch is PromiseRejectedResult => batch.status === "rejected");
+    throw failure?.reason instanceof Error ? failure.reason : new Error("YouTube could not load subscription uploads.");
+  }
+
+  return videos
+    .sort((left, right) => (right.publishedAt ?? "").localeCompare(left.publishedAt ?? ""))
+    .slice(0, MAX_FEED_VIDEOS);
+}
+
+async function assertYouTubeResponse(response: Response, operation: string) {
+  if (response.ok) {
+    return;
+  }
+
+  let reason = "";
+  try {
+    const body = (await response.clone().json()) as YouTubeErrorResponse;
+    reason = body.error?.errors?.[0]?.reason ?? "";
+  } catch {
+    // The HTTP status still provides a useful fallback message.
+  }
+
+  if (response.status === 403 && ["quotaExceeded", "dailyLimitExceeded"].includes(reason)) {
+    throw new Error("YouTube quota is currently exhausted. Kickoff will keep your local queue and try again later.");
+  }
+  throw new Error(`YouTube ${operation} failed with ${response.status}.`);
 }
 
 async function postGoogleTokenRequest(params: URLSearchParams): Promise<GoogleTokenResponse> {
@@ -519,6 +598,24 @@ type YouTubePlaylistItemsResponse = {
   items?: YouTubePlaylistItemResource[];
 };
 
+type YouTubeSubscriptionsResponse = {
+  items?: Array<{
+    snippet?: {
+      resourceId?: {
+        channelId?: string;
+      };
+    };
+  }>;
+};
+
+type YouTubeErrorResponse = {
+  error?: {
+    errors?: Array<{
+      reason?: string;
+    }>;
+  };
+};
+
 type YouTubePlaylistItemResource = {
   id: string;
   snippet?: {
@@ -565,7 +662,7 @@ function mapPlaylistItemToVideoItem(item: YouTubePlaylistItemResource): Electron
     age: formatRelativeAge(publishedAt),
     duration: "--:--",
     status: "new",
-    group: "Uploads",
+    group: "Subscriptions",
     url: `https://www.youtube.com/watch?v=${videoId}`,
     thumbnailUrl:
       item.snippet?.thumbnails?.maxres?.url ??

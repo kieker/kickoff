@@ -46,7 +46,7 @@ app.whenReady().then(async () => {
     return startYouTubeConnect();
   });
   ipcMain.handle("youtube:disconnect", () => disconnectYouTube());
-  ipcMain.handle("youtube:getVideos", () => getYouTubeVideos());
+  ipcMain.handle("youtube:getVideos", (_event, forceRefresh?: boolean) => getYouTubeVideos(forceRefresh));
 
   await createWindow();
 

@@ -1,13 +1,20 @@
-import { Check, Clock3, ExternalLink, Link, Link2Off, Loader2, Play, RefreshCw, Star } from "lucide-react";
+import { Check, Clock3, ExternalLink, Link, Link2Off, Loader2, Pin, Play, Plus, RefreshCw, Star, X } from "lucide-react";
+import { useState } from "react";
 import { SiYoutube } from "react-icons/si";
 import { type VideoItem, type YouTubeConnectionState } from "@kickoff/integrations";
 import { openExternal } from "@kickoff/platform";
 import { Button } from "@kickoff/ui";
 import { WidgetShell } from "../components/widget-shell";
+import type { SavedVideo } from "../state/use-dashboard-interactions";
 
 type YouTubeHubProps = {
   videoStatuses: Record<string, VideoItem["status"]>;
   onSetVideoStatus(videoId: string, status: VideoItem["status"]): void;
+  savedVideos: Record<string, SavedVideo>;
+  onSaveVideo(video: VideoItem, tags: string[]): void;
+  onOpenSavedLibrary(tag?: string): void;
+  priorityChannelIds: string[];
+  onTogglePriorityChannel(channelId: string): void;
   connectionState: YouTubeConnectionState;
   videos: VideoItem[];
   videoSource: "demo" | "connected";
@@ -25,6 +32,11 @@ type YouTubeHubProps = {
 export function YouTubeHub({
   videoStatuses,
   onSetVideoStatus,
+  savedVideos,
+  onSaveVideo,
+  onOpenSavedLibrary,
+  priorityChannelIds,
+  onTogglePriorityChannel,
   connectionState,
   videos: rawVideos,
   videoSource,
@@ -38,13 +50,20 @@ export function YouTubeHub({
   onRefresh,
   onHide
 }: YouTubeHubProps) {
-  const videos = rawVideos.map((video) => ({
-    ...video,
-    status: videoStatuses[video.id] ?? video.status
-  }));
-  const priorityCount = videos.filter((video) => video.group === "Priority").length;
-  const savedCount = videos.filter((video) => video.status === "saved").length;
-  const eyebrowPrefix = videoSource === "connected" ? "Live uploads" : "Demo queue";
+  const [taggingVideoId, setTaggingVideoId] = useState<string>();
+  const [draftTags, setDraftTags] = useState<string[]>([]);
+  const [newTag, setNewTag] = useState("");
+  const videos = rawVideos
+    .map((video) => ({
+      ...video,
+      status: videoStatuses[video.id] ?? video.status,
+      group: video.channelId && priorityChannelIds.includes(video.channelId) ? "Priority" : video.group
+    }))
+    .sort((left, right) => Number(right.group === "Priority") - Number(left.group === "Priority"));
+  const priorityCount = priorityChannelIds.length;
+  const savedCount = Object.keys(savedVideos).length;
+  const availableTags = Array.from(new Set(Object.values(savedVideos).flatMap((video) => video.tags))).sort();
+  const eyebrowPrefix = videoSource === "connected" ? "Subscription feed" : "Demo queue";
 
   return (
     <WidgetShell
@@ -54,6 +73,17 @@ export function YouTubeHub({
       icon={showIcon ? <SiYoutube className="h-5 w-5" /> : undefined}
       action={
         <div className="flex gap-2">
+          <ConnectionPopover
+            state={connectionState}
+            connecting={connecting}
+            disconnecting={disconnecting}
+            onConnect={onConnect}
+            onDisconnect={onDisconnect}
+          />
+          <Button variant="ghost" size="sm" onClick={() => onOpenSavedLibrary()}>
+            <Star className="h-4 w-4" />
+            Saved ({savedCount})
+          </Button>
           <Button variant="ghost" size="sm" onClick={onHide}>
             Hide
           </Button>
@@ -69,13 +99,6 @@ export function YouTubeHub({
       }
     >
       <div className="grid gap-3">
-        <ConnectionPanel
-          state={connectionState}
-          connecting={connecting}
-          disconnecting={disconnecting}
-          onConnect={onConnect}
-          onDisconnect={onDisconnect}
-        />
         {videosError ? (
           <p className="rounded-md border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-100">
             {videosError}
@@ -128,19 +151,102 @@ export function YouTubeHub({
                   <Check className="h-3.5 w-3.5" />
                   Seen
                 </Button>
+                {video.channelId ? (
+                  <Button
+                    size="sm"
+                    variant={priorityChannelIds.includes(video.channelId) ? "primary" : "ghost"}
+                    onClick={() => onTogglePriorityChannel(video.channelId as string)}
+                  >
+                    <Pin className="h-3.5 w-3.5" />
+                    {priorityChannelIds.includes(video.channelId) ? "Priority" : "Prioritize"}
+                  </Button>
+                ) : null}
                 <Button
                   size="sm"
-                  variant={(videoStatuses[video.id] ?? video.status) === "saved" ? "primary" : "ghost"}
-                  onClick={() => onSetVideoStatus(video.id, "saved")}
+                  variant={savedVideos[video.id] ? "primary" : "ghost"}
+                  onClick={() => {
+                    setTaggingVideoId(taggingVideoId === video.id ? undefined : video.id);
+                    setDraftTags(savedVideos[video.id]?.tags ?? []);
+                    setNewTag("");
+                  }}
                 >
                   <Star className="h-3.5 w-3.5" />
-                  Save
+                  {savedVideos[video.id] ? "Saved" : "Save"}
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => openExternal(video.url)}>
                   <ExternalLink className="h-3.5 w-3.5" />
                   Open
                 </Button>
               </div>
+
+              {taggingVideoId === video.id ? (
+                <div className="mt-3 rounded-md border border-accent/25 bg-accent/8 p-3">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <p className="text-xs font-semibold">Save to tags</p>
+                    <button type="button" onClick={() => setTaggingVideoId(undefined)} aria-label="Close tag picker">
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {availableTags.map((tag) => (
+                      <button
+                        key={tag}
+                        type="button"
+                        className={
+                          draftTags.includes(tag)
+                            ? "rounded bg-accent px-2 py-1 text-[11px] text-accent-foreground"
+                            : "rounded bg-black/8 px-2 py-1 text-[11px] dark:bg-white/10"
+                        }
+                        onClick={() =>
+                          setDraftTags((current) =>
+                            current.includes(tag) ? current.filter((item) => item !== tag) : [...current, tag]
+                          )
+                        }
+                      >
+                        {tag}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mt-2 flex gap-2">
+                    <input
+                      value={newTag}
+                      onChange={(event) => setNewTag(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" && newTag.trim()) {
+                          event.preventDefault();
+                          setDraftTags((current) => [...new Set([...current, newTag.trim()])]);
+                          setNewTag("");
+                        }
+                      }}
+                      className="min-w-0 flex-1 rounded border border-black/10 bg-white/60 px-2 py-1 text-xs outline-none focus:border-accent dark:border-white/10 dark:bg-black/20"
+                      placeholder="Create a tag"
+                    />
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      disabled={!newTag.trim()}
+                      onClick={() => {
+                        setDraftTags((current) => [...new Set([...current, newTag.trim()])]);
+                        setNewTag("");
+                      }}
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      Add
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      onClick={() => {
+                        const pendingTag = newTag.trim();
+                        onSaveVideo(video, pendingTag ? [...new Set([...draftTags, pendingTag])] : draftTags);
+                        setTaggingVideoId(undefined);
+                      }}
+                    >
+                      Save to library
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
             </div>
           </article>
         ))}
@@ -149,7 +255,7 @@ export function YouTubeHub({
   );
 }
 
-function ConnectionPanel({
+function ConnectionPopover({
   state,
   connecting,
   disconnecting,
@@ -162,30 +268,57 @@ function ConnectionPanel({
   onConnect(): void;
   onDisconnect(): void;
 }) {
+  const [open, setOpen] = useState(false);
   const isConnecting = state.status === "connecting" || connecting;
   const canDisconnect = state.status === "connected" || state.status === "connecting";
   const message = getConnectionMessage(state);
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-black/10 bg-white/40 px-3 py-2 text-xs dark:border-white/10 dark:bg-black/18">
-      <div className="flex min-w-0 items-center gap-2">
+    <div className="relative">
+      <Button
+        size="sm"
+        variant="ghost"
+        onClick={() => setOpen((current) => !current)}
+        aria-label="YouTube connection"
+        aria-expanded={open}
+      >
         <ConnectionStatusIcon status={state.status} />
-        <div className="min-w-0">
-          <p className="font-semibold">{getConnectionLabel(state.status)}</p>
-          <p className="truncate text-muted-foreground">{message}</p>
+      </Button>
+      {open ? (
+        <div className="absolute right-0 top-full z-30 mt-2 w-72 rounded-lg border border-black/10 bg-background p-3 text-xs shadow-xl dark:border-white/12">
+          <div className="flex items-start gap-2">
+            <ConnectionStatusIcon status={state.status} />
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold">{getConnectionLabel(state.status)}</p>
+              <p className="mt-1 leading-relaxed text-muted-foreground">{message}</p>
+            </div>
+            <button type="button" onClick={() => setOpen(false)} aria-label="Close connection details">
+              <X className="h-3.5 w-3.5 text-muted-foreground" />
+            </button>
+          </div>
+          <div className="mt-3 flex justify-end">
+            {canDisconnect ? (
+              <Button size="sm" variant="ghost" onClick={onDisconnect} disabled={disconnecting}>
+                {disconnecting ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Link2Off className="h-3.5 w-3.5" />
+                )}
+                Disconnect
+              </Button>
+            ) : (
+              <Button size="sm" variant="secondary" onClick={onConnect} disabled={isConnecting}>
+                {isConnecting ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Link className="h-3.5 w-3.5" />
+                )}
+                Connect
+              </Button>
+            )}
+          </div>
         </div>
-      </div>
-      {canDisconnect ? (
-        <Button size="sm" variant="ghost" onClick={onDisconnect} disabled={disconnecting}>
-          {disconnecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Link2Off className="h-3.5 w-3.5" />}
-          Disconnect
-        </Button>
-      ) : (
-        <Button size="sm" variant="secondary" onClick={onConnect} disabled={isConnecting}>
-          {isConnecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Link className="h-3.5 w-3.5" />}
-          Connect
-        </Button>
-      )}
+      ) : null}
     </div>
   );
 }

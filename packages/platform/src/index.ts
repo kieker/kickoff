@@ -96,8 +96,8 @@ export const youtubeBridge = {
   async disconnect(): Promise<PlatformYouTubeConnectionState | undefined> {
     return window.kickoff?.youtube?.disconnect();
   },
-  async getVideos(): Promise<PlatformYouTubeVideosResult | undefined> {
-    return window.kickoff?.youtube?.getVideos();
+  async getVideos(forceRefresh = false): Promise<PlatformYouTubeVideosResult | undefined> {
+    return window.kickoff?.youtube?.getVideos(forceRefresh);
   }
 };
 
@@ -111,7 +111,7 @@ declare global {
         getStatus(): Promise<PlatformYouTubeConnectionState>;
         connect(): Promise<PlatformYouTubeConnectionState>;
         disconnect(): Promise<PlatformYouTubeConnectionState>;
-        getVideos(): Promise<PlatformYouTubeVideosResult>;
+        getVideos(forceRefresh?: boolean): Promise<PlatformYouTubeVideosResult>;
       };
     };
   }

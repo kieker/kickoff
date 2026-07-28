@@ -16,8 +16,8 @@ contextBridge.exposeInMainWorld("kickoff", {
     disconnect() {
       return ipcRenderer.invoke("youtube:disconnect");
     },
-    getVideos() {
-      return ipcRenderer.invoke("youtube:getVideos");
+    getVideos(forceRefresh?: boolean) {
+      return ipcRenderer.invoke("youtube:getVideos", forceRefresh);
     }
   }
 });

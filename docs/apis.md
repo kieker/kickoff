@@ -60,7 +60,8 @@ Notes:
 - Electron owns the PKCE authorization URL, loopback callback, token exchange, and secure local token storage.
 - Electron can call `channels.list?mine=true` to confirm the connected channel.
 - Electron can call `playlistItems.list` against the authenticated channel's uploads playlist.
-- Subscription-based queue replacement is the next YouTube slice.
+- The live queue is assembled from recent uploads across a bounded set of subscribed channels.
+- Subscription results are cached for ten minutes and priority-channel ordering remains local.
 - See [YouTube Integration Plan](./integrations/youtube.md) for implementation details.
 
 ## Steam Web API
