@@ -7,6 +7,7 @@ import {
 } from "@kickoff/integrations";
 import {
   youtubeBridge,
+  type PlatformYouTubeSubscription,
   type PlatformYouTubeConnectionState,
   type PlatformYouTubeVideosResult
 } from "@kickoff/platform";
@@ -23,7 +24,14 @@ type YouTubeActionState = {
   disconnecting: boolean;
 };
 
-export function useYouTubeConnection() {
+type YouTubeSubscriptionsState = {
+  subscriptions: PlatformYouTubeSubscription[];
+  loading: boolean;
+  error?: string;
+};
+
+export function useYouTubeConnection(feedChannelIds: string[] = []) {
+  const channelKey = feedChannelIds.join(",");
   const [connectionState, setConnectionState] = useState<YouTubeConnectionState>(() => getYouTubeConnectionState());
   const [videosState, setVideosState] = useState<YouTubeVideosState>({
     videos: youtubeVideos,
@@ -33,6 +41,10 @@ export function useYouTubeConnection() {
   const [actionState, setActionState] = useState<YouTubeActionState>({
     connecting: false,
     disconnecting: false
+  });
+  const [subscriptionsState, setSubscriptionsState] = useState<YouTubeSubscriptionsState>({
+    subscriptions: [],
+    loading: false
   });
 
   const refreshVideos = useCallback(async (forceRefresh = false) => {
@@ -47,8 +59,30 @@ export function useYouTubeConnection() {
     }
 
     setVideosState((current) => ({ ...current, loading: true, error: undefined }));
-    const result = await youtubeBridge.getVideos(forceRefresh);
+    const result = await youtubeBridge.getVideos(forceRefresh, channelKey ? channelKey.split(",") : []);
     setVideosState(mapVideosResult(result));
+  }, [channelKey]);
+
+  const refreshSubscriptions = useCallback(async (forceRefresh = false) => {
+    if (!youtubeBridge.isAvailable()) {
+      setSubscriptionsState({
+        subscriptions: [],
+        loading: false,
+        error: "Subscription selection is only available in the Kickoff desktop app."
+      });
+      return;
+    }
+    setSubscriptionsState((current) => ({ ...current, loading: true, error: undefined }));
+    const result = await youtubeBridge.getSubscriptions(forceRefresh);
+    if (!result || result.status === "error") {
+      setSubscriptionsState({
+        subscriptions: [],
+        loading: false,
+        error: result?.message ?? "Kickoff could not load subscriptions."
+      });
+      return;
+    }
+    setSubscriptionsState({ subscriptions: result.subscriptions, loading: false });
   }, []);
 
   const refresh = useCallback(async () => {
@@ -124,11 +158,13 @@ export function useYouTubeConnection() {
     connectionState,
     videosState,
     actionState,
+    subscriptionsState,
     actions: {
       connect,
       disconnect,
       refresh,
-      refreshVideos
+      refreshVideos,
+      refreshSubscriptions
     }
   };
 }

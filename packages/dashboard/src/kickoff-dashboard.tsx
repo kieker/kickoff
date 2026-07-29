@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Plus, Search } from "lucide-react";
 import { Button } from "@kickoff/ui";
 import { CommandPalette } from "./components/command-palette";
@@ -6,10 +6,13 @@ import { SavedLibrary } from "./components/saved-library";
 import { SettingsPanel } from "./components/settings-panel";
 import { TopBar } from "./components/top-bar";
 import { WidgetLibrary } from "./components/widget-library";
+import { YouTubeChannelSelector } from "./components/youtube-channel-selector";
+import { YouTubePlayer } from "./components/youtube-player";
 import { useDashboardInteractions } from "./state/use-dashboard-interactions";
 import { useDashboardSettings } from "./state/use-dashboard-settings";
 import { useYouTubeConnection } from "./state/use-youtube-connection";
 import type { WidgetId } from "./types";
+import type { VideoItem } from "@kickoff/integrations";
 import { RedditWidget } from "./widgets/reddit-widget";
 import { SpotifyWidget } from "./widgets/spotify-widget";
 import { SteamWidget } from "./widgets/steam-widget";
@@ -19,18 +22,25 @@ import { YouTubeHub } from "./widgets/youtube-hub";
 export function KickoffDashboard() {
   const { settings, actions } = useDashboardSettings();
   const { state: interactions, actions: interactionActions } = useDashboardInteractions();
+  const youtubeFeedChannelIds = useMemo(
+    () => Array.from(new Set([...interactions.priorityChannelIds, ...interactions.selectedYouTubeChannelIds])),
+    [interactions.priorityChannelIds, interactions.selectedYouTubeChannelIds]
+  );
   const {
     connectionState: youtubeConnection,
     videosState: youtubeVideosState,
     actionState: youtubeActionState,
+    subscriptionsState: youtubeSubscriptionsState,
     actions: youtubeActions
-  } = useYouTubeConnection();
+  } = useYouTubeConnection(youtubeFeedChannelIds);
   const [widgetLibraryOpen, setWidgetLibraryOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [savedLibraryOpen, setSavedLibraryOpen] = useState(false);
   const [selectedSavedTag, setSelectedSavedTag] = useState<string>();
+  const [youtubeChannelSelectorOpen, setYouTubeChannelSelectorOpen] = useState(false);
+  const [playingVideo, setPlayingVideo] = useState<VideoItem>();
   const backgroundStyle = getBackgroundStyle(settings);
   const visibleWidgets = new Set(interactions.visibleWidgets);
 
@@ -114,6 +124,9 @@ export function KickoffDashboard() {
                       setSelectedSavedTag(tag);
                       setSavedLibraryOpen(true);
                     }}
+                    onManageChannels={() => setYouTubeChannelSelectorOpen(true)}
+                    videoProgress={interactions.videoProgress}
+                    onPlayVideo={setPlayingVideo}
                     priorityChannelIds={interactions.priorityChannelIds}
                     onTogglePriorityChannel={interactionActions.togglePriorityChannel}
                     connectionState={youtubeConnection}
@@ -211,7 +224,27 @@ export function KickoffDashboard() {
         selectedTag={selectedSavedTag}
         onSelectTag={setSelectedSavedTag}
         onRemove={interactionActions.removeSavedVideo}
+        videoProgress={interactions.videoProgress}
+        onPlay={setPlayingVideo}
         onClose={() => setSavedLibraryOpen(false)}
+      />
+      <YouTubeChannelSelector
+        open={youtubeChannelSelectorOpen}
+        subscriptions={youtubeSubscriptionsState.subscriptions}
+        selectedChannelIds={interactions.selectedYouTubeChannelIds}
+        priorityChannelIds={interactions.priorityChannelIds}
+        loading={youtubeSubscriptionsState.loading}
+        error={youtubeSubscriptionsState.error}
+        onRefresh={() => youtubeActions.refreshSubscriptions(true)}
+        onSave={interactionActions.setSelectedYouTubeChannels}
+        onClose={() => setYouTubeChannelSelectorOpen(false)}
+      />
+      <YouTubePlayer
+        video={playingVideo}
+        progress={playingVideo ? interactions.videoProgress[playingVideo.id] : undefined}
+        onProgress={interactionActions.setVideoProgress}
+        onComplete={interactionActions.completeVideo}
+        onClose={() => setPlayingVideo(undefined)}
       />
     </div>
   );

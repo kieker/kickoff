@@ -83,6 +83,31 @@ export type PlatformYouTubeVideosResult =
   | { status: "connected"; videos: PlatformYouTubeVideoItem[] }
   | { status: "error"; message: string; videos: PlatformYouTubeVideoItem[] };
 
+export type PlatformYouTubeSubscription = {
+  channelId: string;
+  title: string;
+  description?: string;
+  thumbnailUrl?: string;
+};
+
+export type PlatformYouTubeSubscriptionsResult =
+  | { status: "connected"; subscriptions: PlatformYouTubeSubscription[] }
+  | { status: "error"; message: string; subscriptions: PlatformYouTubeSubscription[] };
+
+export type PlatformYouTubeComment = {
+  id: string;
+  author: string;
+  authorAvatarUrl?: string;
+  text: string;
+  likeCount: number;
+  publishedAt?: string;
+  replyCount: number;
+};
+
+export type PlatformYouTubeCommentsResult =
+  | { status: "connected"; comments: PlatformYouTubeComment[]; nextPageToken?: string }
+  | { status: "error"; message: string; comments: PlatformYouTubeComment[] };
+
 export const youtubeBridge = {
   isAvailable(): boolean {
     return window.kickoff?.youtube !== undefined;
@@ -96,8 +121,17 @@ export const youtubeBridge = {
   async disconnect(): Promise<PlatformYouTubeConnectionState | undefined> {
     return window.kickoff?.youtube?.disconnect();
   },
-  async getVideos(forceRefresh = false): Promise<PlatformYouTubeVideosResult | undefined> {
-    return window.kickoff?.youtube?.getVideos(forceRefresh);
+  async getVideos(
+    forceRefresh = false,
+    channelIds: string[] = []
+  ): Promise<PlatformYouTubeVideosResult | undefined> {
+    return window.kickoff?.youtube?.getVideos(forceRefresh, channelIds);
+  },
+  async getSubscriptions(forceRefresh = false): Promise<PlatformYouTubeSubscriptionsResult | undefined> {
+    return window.kickoff?.youtube?.getSubscriptions(forceRefresh);
+  },
+  async getComments(videoId: string, pageToken?: string): Promise<PlatformYouTubeCommentsResult | undefined> {
+    return window.kickoff?.youtube?.getComments(videoId, pageToken);
   }
 };
 
@@ -111,7 +145,9 @@ declare global {
         getStatus(): Promise<PlatformYouTubeConnectionState>;
         connect(): Promise<PlatformYouTubeConnectionState>;
         disconnect(): Promise<PlatformYouTubeConnectionState>;
-        getVideos(forceRefresh?: boolean): Promise<PlatformYouTubeVideosResult>;
+        getVideos(forceRefresh?: boolean, channelIds?: string[]): Promise<PlatformYouTubeVideosResult>;
+        getSubscriptions(forceRefresh?: boolean): Promise<PlatformYouTubeSubscriptionsResult>;
+        getComments(videoId: string, pageToken?: string): Promise<PlatformYouTubeCommentsResult>;
       };
     };
   }

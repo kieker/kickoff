@@ -9,12 +9,20 @@ export type SavedVideo = VideoItem & {
   tags: string[];
   savedAt: string;
 };
+export type VideoProgress = {
+  seconds: number;
+  duration: number;
+  updatedAt: string;
+  completed?: boolean;
+};
 
 export type DashboardInteractions = {
   visibleWidgets: WidgetId[];
   videoStatuses: Record<string, VideoItem["status"]>;
   savedVideos: Record<string, SavedVideo>;
+  videoProgress: Record<string, VideoProgress>;
   priorityChannelIds: string[];
+  selectedYouTubeChannelIds: string[];
   redditFilter: RedditFilter;
   weatherLocation: WeatherLocation;
   lastRefreshedAt?: string;
@@ -27,7 +35,9 @@ const defaultInteractions: DashboardInteractions = {
   visibleWidgets: defaultVisibleWidgets,
   videoStatuses: Object.fromEntries(youtubeVideos.map((video) => [video.id, video.status])),
   savedVideos: {},
+  videoProgress: {},
   priorityChannelIds: [],
+  selectedYouTubeChannelIds: [],
   redditFilter: "hot",
   weatherLocation: defaultWeatherLocation
 };
@@ -43,7 +53,9 @@ export function useDashboardInteractions() {
         ...stored.videoStatuses
       },
       savedVideos: stored.savedVideos ?? {},
-      priorityChannelIds: stored.priorityChannelIds ?? []
+      videoProgress: stored.videoProgress ?? {},
+      priorityChannelIds: stored.priorityChannelIds ?? [],
+      selectedYouTubeChannelIds: stored.selectedYouTubeChannelIds ?? []
     };
   });
 
@@ -114,12 +126,52 @@ export function useDashboardInteractions() {
           };
         });
       },
+      setVideoProgress(videoId: string, seconds: number, duration: number) {
+        if (!Number.isFinite(seconds) || !Number.isFinite(duration) || duration <= 0) {
+          return;
+        }
+        setState((current) => ({
+          ...current,
+          videoProgress: {
+            ...current.videoProgress,
+            [videoId]: {
+              seconds: Math.max(0, Math.min(seconds, duration)),
+              duration,
+              updatedAt: new Date().toISOString(),
+              completed: current.videoProgress[videoId]?.completed
+            }
+          }
+        }));
+      },
+      completeVideo(videoId: string, duration: number) {
+        setState((current) => ({
+          ...current,
+          videoStatuses: current.savedVideos[videoId]
+            ? current.videoStatuses
+            : { ...current.videoStatuses, [videoId]: "seen" },
+          videoProgress: {
+            ...current.videoProgress,
+            [videoId]: {
+              seconds: duration,
+              duration,
+              updatedAt: new Date().toISOString(),
+              completed: true
+            }
+          }
+        }));
+      },
       togglePriorityChannel(channelId: string) {
         setState((current) => ({
           ...current,
           priorityChannelIds: current.priorityChannelIds.includes(channelId)
             ? current.priorityChannelIds.filter((id) => id !== channelId)
             : [...current.priorityChannelIds, channelId]
+        }));
+      },
+      setSelectedYouTubeChannels(channelIds: string[]) {
+        setState((current) => ({
+          ...current,
+          selectedYouTubeChannelIds: Array.from(new Set(channelIds))
         }));
       },
       refresh() {

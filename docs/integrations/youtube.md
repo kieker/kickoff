@@ -86,6 +86,7 @@ Proposed local variables:
 VITE_YOUTUBE_DEMO_MODE=true
 YOUTUBE_CLIENT_ID=
 YOUTUBE_CLIENT_SECRET=
+YOUTUBE_API_KEY=
 YOUTUBE_REDIRECT_PORT=53682
 ```
 
@@ -93,6 +94,8 @@ Notes:
 
 - `YOUTUBE_CLIENT_ID` is not a secret for an installed app, but it should still be kept out of source for easy account switching.
 - `YOUTUBE_CLIENT_SECRET`, when present on the Google desktop credential, is read by Electron main only.
+- `YOUTUBE_API_KEY` is used only for public read-only data such as comment threads. Restrict it to the YouTube
+  Data API in Google Cloud Console; do not expose it through preload or renderer code.
 - Do not add a client secret to the renderer or expose it through preload.
 
 ## Token Storage
@@ -228,11 +231,18 @@ Rules:
 - A bounded channel set and ten-minute in-memory cache protect API quota.
 - Priority channels and seen/saved state persist locally in the dashboard.
 - Saved videos retain a local metadata snapshot and can belong to multiple user-created tags.
+- The channel selector retrieves the complete subscription catalog, supports up to 24 explicit feed channels,
+  and always includes priority channels.
+- Videos can play in an embedded YouTube player. Kickoff stores playback position locally, resumes unfinished
+  videos, and displays watched percentage in the queue and saved library.
+- The player drawer includes cached, paginated, read-only top-level comments ordered by relevance.
 
 ## Known Follow-ups
 
 - Manual refresh currently does not reliably surface newly published subscription videos; investigate API freshness,
   playlist selection, and cache-bypass behavior separately from the saved-library work.
+- Keep posting comments and replies on YouTube until Kickoff deliberately adopts the broader
+  `youtube.force-ssl` scope.
 
 ## Open Questions
 

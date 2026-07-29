@@ -26,7 +26,16 @@ export function TopBar({
   return (
     <header className="sticky top-0 z-20 flex items-center justify-between gap-4 border-b border-black/10 bg-white/58 px-5 py-3 backdrop-blur-xl dark:border-white/10 dark:bg-black/18">
       <div className="flex min-w-0 items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent text-sm font-bold text-accent-foreground">
+        <div
+          className="flex h-10 w-10 items-center justify-center rounded-lg text-sm font-bold text-white shadow-sm"
+          style={{
+            background:
+              settings.theme === "dark"
+                ? "linear-gradient(135deg, hsl(var(--accent)) 0%, color-mix(in srgb, hsl(var(--accent)) 28%, #080b12) 100%)"
+                : "linear-gradient(135deg, hsl(var(--accent)) 0%, color-mix(in srgb, hsl(var(--accent)) 42%, #f8fafc) 100%)",
+            textShadow: "0 1px 2px rgba(0, 0, 0, 0.45)"
+          }}
+        >
           K
         </div>
         <div className="min-w-0">

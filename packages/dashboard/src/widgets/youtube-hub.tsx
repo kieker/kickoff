@@ -1,11 +1,11 @@
-import { Check, Clock3, ExternalLink, Link, Link2Off, Loader2, Pin, Play, Plus, RefreshCw, Star, X } from "lucide-react";
+import { Check, Clock3, ExternalLink, Link, Link2Off, ListFilter, Loader2, Pin, Play, Plus, RefreshCw, Star, X } from "lucide-react";
 import { useState } from "react";
 import { SiYoutube } from "react-icons/si";
 import { type VideoItem, type YouTubeConnectionState } from "@kickoff/integrations";
 import { openExternal } from "@kickoff/platform";
 import { Button } from "@kickoff/ui";
 import { WidgetShell } from "../components/widget-shell";
-import type { SavedVideo } from "../state/use-dashboard-interactions";
+import type { SavedVideo, VideoProgress } from "../state/use-dashboard-interactions";
 
 type YouTubeHubProps = {
   videoStatuses: Record<string, VideoItem["status"]>;
@@ -13,6 +13,9 @@ type YouTubeHubProps = {
   savedVideos: Record<string, SavedVideo>;
   onSaveVideo(video: VideoItem, tags: string[]): void;
   onOpenSavedLibrary(tag?: string): void;
+  onManageChannels(): void;
+  videoProgress: Record<string, VideoProgress>;
+  onPlayVideo(video: VideoItem): void;
   priorityChannelIds: string[];
   onTogglePriorityChannel(channelId: string): void;
   connectionState: YouTubeConnectionState;
@@ -35,6 +38,9 @@ export function YouTubeHub({
   savedVideos,
   onSaveVideo,
   onOpenSavedLibrary,
+  onManageChannels,
+  videoProgress,
+  onPlayVideo,
   priorityChannelIds,
   onTogglePriorityChannel,
   connectionState,
@@ -80,6 +86,10 @@ export function YouTubeHub({
             onConnect={onConnect}
             onDisconnect={onDisconnect}
           />
+          <Button variant="ghost" size="sm" onClick={onManageChannels}>
+            <ListFilter className="h-4 w-4" />
+            Channels
+          </Button>
           <Button variant="ghost" size="sm" onClick={() => onOpenSavedLibrary()}>
             <Star className="h-4 w-4" />
             Saved ({savedCount})
@@ -112,7 +122,7 @@ export function YouTubeHub({
             <button
               type="button"
               className="group relative aspect-video overflow-hidden rounded-md bg-gradient-to-br from-red-500/60 via-zinc-900 to-cyan-500/40"
-              onClick={() => openExternal(video.url)}
+              onClick={() => onPlayVideo(video)}
             >
               {video.thumbnailUrl ? (
                 <img src={video.thumbnailUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
@@ -126,6 +136,7 @@ export function YouTubeHub({
               <span className="absolute bottom-2 right-2 rounded bg-black/72 px-1.5 py-0.5 text-[11px]">
                 {video.duration}
               </span>
+              <VideoProgressBar progress={videoProgress[video.id]} />
             </button>
 
             <div className="min-w-0">
@@ -381,4 +392,19 @@ function StatusIcon({ status }: { status: "new" | "seen" | "saved" }) {
   }
 
   return <Clock3 className="h-4 w-4 shrink-0 text-accent" />;
+}
+
+function VideoProgressBar({ progress }: { progress?: VideoProgress }) {
+  if (!progress || progress.duration <= 0) {
+    return null;
+  }
+  const percentage = Math.min(100, Math.round((progress.seconds / progress.duration) * 100));
+  return (
+    <>
+      <span className="absolute bottom-0 left-0 h-1 bg-accent" style={{ width: `${percentage}%` }} />
+      <span className="absolute bottom-2 left-2 rounded bg-black/72 px-1.5 py-0.5 text-[11px] text-white">
+        {progress.completed ? "Watched" : `${percentage}%`}
+      </span>
+    </>
+  );
 }

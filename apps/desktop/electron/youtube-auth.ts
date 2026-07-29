@@ -25,6 +25,35 @@ export type ElectronYouTubeVideosResult =
   | { status: "connected"; videos: ElectronYouTubeVideoItem[] }
   | { status: "error"; message: string; videos: ElectronYouTubeVideoItem[] };
 
+export type ElectronYouTubeSubscriptionsResult =
+  | { status: "connected"; subscriptions: ElectronYouTubeSubscription[] }
+  | { status: "error"; message: string; subscriptions: ElectronYouTubeSubscription[] };
+
+export type ElectronYouTubeCommentsResult =
+  | {
+      status: "connected";
+      comments: ElectronYouTubeComment[];
+      nextPageToken?: string;
+    }
+  | { status: "error"; message: string; comments: ElectronYouTubeComment[] };
+
+type ElectronYouTubeComment = {
+  id: string;
+  author: string;
+  authorAvatarUrl?: string;
+  text: string;
+  likeCount: number;
+  publishedAt?: string;
+  replyCount: number;
+};
+
+type ElectronYouTubeSubscription = {
+  channelId: string;
+  title: string;
+  description?: string;
+  thumbnailUrl?: string;
+};
+
 type ElectronYouTubeChannelSummary = {
   id: string;
   title: string;
@@ -56,13 +85,23 @@ type PendingAuth = {
 let pendingAuth: PendingAuth | undefined;
 let currentStatus: ElectronYouTubeConnectionState | undefined;
 let cachedSubscriptionFeed:
-  | { accessToken: string; expiresAt: number; videos: ElectronYouTubeVideoItem[] }
+  | { accessToken: string; channelKey: string; expiresAt: number; videos: ElectronYouTubeVideoItem[] }
   | undefined;
+let cachedSubscriptionCatalog:
+  | { accessToken: string; expiresAt: number; subscriptions: ElectronYouTubeSubscription[] }
+  | undefined;
+const cachedCommentPages = new Map<
+  string,
+  { expiresAt: number; result: ElectronYouTubeCommentsResult }
+>();
 
 const SUBSCRIPTION_FEED_TTL_MS = 10 * 60_000;
-const MAX_SUBSCRIPTIONS = 12;
+const SUBSCRIPTION_CATALOG_TTL_MS = 30 * 60_000;
+const DEFAULT_FEED_CHANNELS = 12;
+const MAX_FEED_CHANNELS = 24;
 const UPLOADS_PER_CHANNEL = 3;
 const MAX_FEED_VIDEOS = 18;
+const COMMENT_PAGE_TTL_MS = 10 * 60_000;
 
 export async function getYouTubeAuthStatus(): Promise<ElectronYouTubeConnectionState> {
   if (pendingAuth && currentStatus?.status === "connecting") {
@@ -157,7 +196,10 @@ export async function startYouTubeConnect(): Promise<ElectronYouTubeConnectionSt
   }
 }
 
-export async function getYouTubeVideos(forceRefresh = false): Promise<ElectronYouTubeVideosResult> {
+export async function getYouTubeVideos(
+  forceRefresh = false,
+  selectedChannelIds: string[] = []
+): Promise<ElectronYouTubeVideosResult> {
   const config = getYouTubeAuthConfig();
   if (!config.clientId) {
     return {
@@ -178,18 +220,22 @@ export async function getYouTubeVideos(forceRefresh = false): Promise<ElectronYo
     }
 
     const tokens = await ensureFreshTokens(storedTokens, config.clientId);
+    const channelIds = selectedChannelIds.slice(0, MAX_FEED_CHANNELS);
+    const channelKey = channelIds.join(",");
     if (
       !forceRefresh &&
       cachedSubscriptionFeed &&
       cachedSubscriptionFeed.accessToken === tokens.accessToken &&
+      cachedSubscriptionFeed.channelKey === channelKey &&
       cachedSubscriptionFeed.expiresAt > Date.now()
     ) {
       return { status: "connected", videos: cachedSubscriptionFeed.videos };
     }
 
-    const videos = await fetchSubscriptionFeed(tokens.accessToken);
+    const videos = await fetchSubscriptionFeed(tokens.accessToken, channelIds);
     cachedSubscriptionFeed = {
       accessToken: tokens.accessToken,
+      channelKey,
       expiresAt: Date.now() + SUBSCRIPTION_FEED_TTL_MS,
       videos
     };
@@ -206,9 +252,124 @@ export async function getYouTubeVideos(forceRefresh = false): Promise<ElectronYo
   }
 }
 
+export async function getYouTubeSubscriptions(forceRefresh = false): Promise<ElectronYouTubeSubscriptionsResult> {
+  const config = getYouTubeAuthConfig();
+  try {
+    const storedTokens = await readYouTubeTokens();
+    if (!config.clientId || !storedTokens) {
+      return { status: "error", message: "Connect YouTube to choose feed channels.", subscriptions: [] };
+    }
+    const tokens = await ensureFreshTokens(storedTokens, config.clientId);
+    if (
+      !forceRefresh &&
+      cachedSubscriptionCatalog &&
+      cachedSubscriptionCatalog.accessToken === tokens.accessToken &&
+      cachedSubscriptionCatalog.expiresAt > Date.now()
+    ) {
+      return { status: "connected", subscriptions: cachedSubscriptionCatalog.subscriptions };
+    }
+    const subscriptions = await fetchAllSubscriptions(tokens.accessToken);
+    cachedSubscriptionCatalog = {
+      accessToken: tokens.accessToken,
+      expiresAt: Date.now() + SUBSCRIPTION_CATALOG_TTL_MS,
+      subscriptions
+    };
+    return { status: "connected", subscriptions };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Kickoff could not load YouTube subscriptions.",
+      subscriptions: []
+    };
+  }
+}
+
+export async function getYouTubeComments(
+  videoId: string,
+  pageToken?: string
+): Promise<ElectronYouTubeCommentsResult> {
+  if (!videoId) {
+    return { status: "error", message: "A video is required to load comments.", comments: [] };
+  }
+  const cacheKey = `${videoId}:${pageToken ?? "first"}`;
+  const cached = cachedCommentPages.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.result;
+  }
+  const config = getYouTubeAuthConfig();
+  try {
+    const storedTokens = await readYouTubeTokens();
+    if (!config.clientId || !storedTokens) {
+      return { status: "error", message: "Connect YouTube to load comments.", comments: [] };
+    }
+    const tokens = await ensureFreshTokens(storedTokens, config.clientId);
+    const url = new URL("https://www.googleapis.com/youtube/v3/commentThreads");
+    url.searchParams.set("part", "snippet");
+    url.searchParams.set("videoId", videoId);
+    url.searchParams.set("order", "relevance");
+    url.searchParams.set("textFormat", "plainText");
+    url.searchParams.set("maxResults", "20");
+    if (config.apiKey) {
+      url.searchParams.set("key", config.apiKey);
+    }
+    if (pageToken) {
+      url.searchParams.set("pageToken", pageToken);
+    }
+    const response = await fetch(url, config.apiKey
+      ? undefined
+      : { headers: { authorization: `Bearer ${tokens.accessToken}` } });
+    if (!response.ok) {
+      const body = (await response.clone().json()) as YouTubeErrorResponse;
+      const reason = body.error?.errors?.[0]?.reason;
+      if (reason === "commentsDisabled") {
+        return { status: "error", message: "Comments are disabled for this video.", comments: [] };
+      }
+      if (reason === "quotaExceeded" || reason === "dailyLimitExceeded") {
+        return {
+          status: "error",
+          message: "YouTube quota is currently exhausted. Comments will be available after the quota resets.",
+          comments: []
+        };
+      }
+      if (reason === "insufficientPermissions" && !config.apiKey) {
+        return {
+          status: "error",
+          message:
+            "Public comments need a YouTube Data API key. Add YOUTUBE_API_KEY to Kickoff's .env file and restart.",
+          comments: []
+        };
+      }
+      const detail = body.error?.message;
+      return {
+        status: "error",
+        message: detail
+          ? `YouTube comments are unavailable: ${detail} (${reason ?? response.status}).`
+          : `YouTube comments lookup failed with ${response.status}${reason ? ` (${reason})` : ""}.`,
+        comments: []
+      };
+    }
+    const body = (await response.json()) as YouTubeCommentThreadsResponse;
+    const result: ElectronYouTubeCommentsResult = {
+      status: "connected",
+      comments: (body.items ?? []).map(mapCommentThread),
+      nextPageToken: body.nextPageToken
+    };
+    cachedCommentPages.set(cacheKey, { expiresAt: Date.now() + COMMENT_PAGE_TTL_MS, result });
+    return result;
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Kickoff could not load YouTube comments.",
+      comments: []
+    };
+  }
+}
+
 export async function disconnectYouTube(): Promise<ElectronYouTubeConnectionState> {
   cleanupPendingAuth();
   cachedSubscriptionFeed = undefined;
+  cachedSubscriptionCatalog = undefined;
+  cachedCommentPages.clear();
   await clearYouTubeTokens();
   const config = getYouTubeAuthConfig();
   const status: ElectronYouTubeConnectionState = {
@@ -226,6 +387,7 @@ function getYouTubeAuthConfig() {
   return {
     clientId: process.env.YOUTUBE_CLIENT_ID || process.env.VITE_YOUTUBE_CLIENT_ID,
     clientSecret: process.env.YOUTUBE_CLIENT_SECRET,
+    apiKey: process.env.YOUTUBE_API_KEY,
     redirectUri: `http://127.0.0.1:${port}${CALLBACK_PATH}`
   };
 }
@@ -478,21 +640,16 @@ async function fetchUploadsPlaylistVideos(accessToken: string, playlistId: strin
     .filter((video): video is ElectronYouTubeVideoItem => video !== undefined);
 }
 
-async function fetchSubscriptionFeed(accessToken: string): Promise<ElectronYouTubeVideoItem[]> {
-  const subscriptionsUrl = new URL("https://www.googleapis.com/youtube/v3/subscriptions");
-  subscriptionsUrl.searchParams.set("part", "snippet");
-  subscriptionsUrl.searchParams.set("mine", "true");
-  subscriptionsUrl.searchParams.set("order", "relevance");
-  subscriptionsUrl.searchParams.set("maxResults", String(MAX_SUBSCRIPTIONS));
-
-  const subscriptionsResponse = await fetch(subscriptionsUrl, {
-    headers: { authorization: `Bearer ${accessToken}` }
-  });
-  await assertYouTubeResponse(subscriptionsResponse, "subscriptions lookup");
-  const subscriptions = (await subscriptionsResponse.json()) as YouTubeSubscriptionsResponse;
-  const channelIds = (subscriptions.items ?? [])
-    .map((item) => item.snippet?.resourceId?.channelId)
-    .filter((channelId): channelId is string => Boolean(channelId));
+async function fetchSubscriptionFeed(
+  accessToken: string,
+  selectedChannelIds: string[]
+): Promise<ElectronYouTubeVideoItem[]> {
+  const channelIds =
+    selectedChannelIds.length > 0
+      ? selectedChannelIds
+      : (await fetchSubscriptionsPage(accessToken, undefined, "relevance")).subscriptions
+          .slice(0, DEFAULT_FEED_CHANNELS)
+          .map((subscription) => subscription.channelId);
 
   if (channelIds.length === 0) {
     return [];
@@ -501,7 +658,7 @@ async function fetchSubscriptionFeed(accessToken: string): Promise<ElectronYouTu
   const channelsUrl = new URL("https://www.googleapis.com/youtube/v3/channels");
   channelsUrl.searchParams.set("part", "contentDetails");
   channelsUrl.searchParams.set("id", channelIds.join(","));
-  channelsUrl.searchParams.set("maxResults", String(MAX_SUBSCRIPTIONS));
+  channelsUrl.searchParams.set("maxResults", String(MAX_FEED_CHANNELS));
   const channelsResponse = await fetch(channelsUrl, {
     headers: { authorization: `Bearer ${accessToken}` }
   });
@@ -523,6 +680,52 @@ async function fetchSubscriptionFeed(accessToken: string): Promise<ElectronYouTu
   return videos
     .sort((left, right) => (right.publishedAt ?? "").localeCompare(left.publishedAt ?? ""))
     .slice(0, MAX_FEED_VIDEOS);
+}
+
+async function fetchAllSubscriptions(accessToken: string) {
+  const subscriptions: ElectronYouTubeSubscription[] = [];
+  let pageToken: string | undefined;
+  do {
+    const page = await fetchSubscriptionsPage(accessToken, pageToken, "alphabetical");
+    subscriptions.push(...page.subscriptions);
+    pageToken = page.nextPageToken;
+  } while (pageToken);
+  return subscriptions;
+}
+
+async function fetchSubscriptionsPage(
+  accessToken: string,
+  pageToken: string | undefined,
+  order: "alphabetical" | "relevance"
+) {
+  const url = new URL("https://www.googleapis.com/youtube/v3/subscriptions");
+  url.searchParams.set("part", "snippet");
+  url.searchParams.set("mine", "true");
+  url.searchParams.set("order", order);
+  url.searchParams.set("maxResults", "50");
+  if (pageToken) {
+    url.searchParams.set("pageToken", pageToken);
+  }
+  const response = await fetch(url, { headers: { authorization: `Bearer ${accessToken}` } });
+  await assertYouTubeResponse(response, "subscriptions lookup");
+  const body = (await response.json()) as YouTubeSubscriptionsResponse;
+  const subscriptions: ElectronYouTubeSubscription[] = [];
+  for (const item of body.items ?? []) {
+    const channelId = item.snippet?.resourceId?.channelId;
+    if (!channelId) {
+      continue;
+    }
+    subscriptions.push({
+      channelId,
+      title: item.snippet?.title ?? "YouTube channel",
+      description: item.snippet?.description,
+      thumbnailUrl: item.snippet?.thumbnails?.medium?.url ?? item.snippet?.thumbnails?.default?.url
+    });
+  }
+  return {
+    nextPageToken: body.nextPageToken,
+    subscriptions
+  };
 }
 
 async function assertYouTubeResponse(response: Response, operation: string) {
@@ -599,8 +802,15 @@ type YouTubePlaylistItemsResponse = {
 };
 
 type YouTubeSubscriptionsResponse = {
+  nextPageToken?: string;
   items?: Array<{
     snippet?: {
+      title?: string;
+      description?: string;
+      thumbnails?: {
+        default?: { url?: string };
+        medium?: { url?: string };
+      };
       resourceId?: {
         channelId?: string;
       };
@@ -610,11 +820,47 @@ type YouTubeSubscriptionsResponse = {
 
 type YouTubeErrorResponse = {
   error?: {
+    message?: string;
     errors?: Array<{
       reason?: string;
     }>;
   };
 };
+
+type YouTubeCommentThreadsResponse = {
+  nextPageToken?: string;
+  items?: Array<{
+    id: string;
+    snippet?: {
+      totalReplyCount?: number;
+      topLevelComment?: {
+        id?: string;
+        snippet?: {
+          authorDisplayName?: string;
+          authorProfileImageUrl?: string;
+          textDisplay?: string;
+          likeCount?: number;
+          publishedAt?: string;
+        };
+      };
+    };
+  }>;
+};
+
+function mapCommentThread(
+  thread: NonNullable<YouTubeCommentThreadsResponse["items"]>[number]
+): ElectronYouTubeComment {
+  const comment = thread.snippet?.topLevelComment;
+  return {
+    id: comment?.id ?? thread.id,
+    author: comment?.snippet?.authorDisplayName ?? "YouTube user",
+    authorAvatarUrl: comment?.snippet?.authorProfileImageUrl,
+    text: comment?.snippet?.textDisplay ?? "",
+    likeCount: comment?.snippet?.likeCount ?? 0,
+    publishedAt: comment?.snippet?.publishedAt,
+    replyCount: thread.snippet?.totalReplyCount ?? 0
+  };
+}
 
 type YouTubePlaylistItemResource = {
   id: string;

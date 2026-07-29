@@ -2,6 +2,7 @@ import { ExternalLink, Play, Trash2, X } from "lucide-react";
 import { openExternal } from "@kickoff/platform";
 import { Button } from "@kickoff/ui";
 import type { SavedVideo } from "../state/use-dashboard-interactions";
+import type { VideoProgress } from "../state/use-dashboard-interactions";
 
 type SavedLibraryProps = {
   open: boolean;
@@ -9,6 +10,8 @@ type SavedLibraryProps = {
   selectedTag?: string;
   onSelectTag(tag?: string): void;
   onRemove(videoId: string): void;
+  videoProgress: Record<string, VideoProgress>;
+  onPlay(video: SavedVideo): void;
   onClose(): void;
 };
 
@@ -18,6 +21,8 @@ export function SavedLibrary({
   selectedTag,
   onSelectTag,
   onRemove,
+  videoProgress,
+  onPlay,
   onClose
 }: SavedLibraryProps) {
   if (!open) {
@@ -70,7 +75,7 @@ export function SavedLibrary({
               <button
                 type="button"
                 className="group relative aspect-video overflow-hidden rounded-md bg-zinc-900"
-                onClick={() => openExternal(video.url)}
+                onClick={() => onPlay(video)}
               >
                 {video.thumbnailUrl ? (
                   <img src={video.thumbnailUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
@@ -78,6 +83,21 @@ export function SavedLibrary({
                 <span className="absolute inset-0 grid place-items-center bg-black/18">
                   <Play className="h-6 w-6 fill-current text-white" />
                 </span>
+                {videoProgress[video.id] ? (
+                  <span className="absolute bottom-0 left-0 right-0 h-1 bg-white/20">
+                    <span
+                      className="block h-full bg-accent"
+                      style={{
+                        width: `${Math.min(
+                          100,
+                          Math.round(
+                            (videoProgress[video.id].seconds / videoProgress[video.id].duration) * 100
+                          )
+                        )}%`
+                      }}
+                    />
+                  </span>
+                ) : null}
               </button>
               <div className="min-w-0">
                 <h3 className="line-clamp-2 text-sm font-semibold">{video.title}</h3>

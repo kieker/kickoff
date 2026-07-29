@@ -1,8 +1,15 @@
-import { app, BrowserWindow, ipcMain, shell } from "electron";
+import { app, BrowserWindow, ipcMain, session, shell } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadDesktopEnv } from "./env";
-import { disconnectYouTube, getYouTubeAuthStatus, getYouTubeVideos, startYouTubeConnect } from "./youtube-auth";
+import {
+  disconnectYouTube,
+  getYouTubeAuthStatus,
+  getYouTubeComments,
+  getYouTubeSubscriptions,
+  getYouTubeVideos,
+  startYouTubeConnect
+} from "./youtube-auth";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 loadDesktopEnv();
@@ -15,6 +22,7 @@ async function createWindow() {
     minWidth: 980,
     minHeight: 680,
     title: "Kickoff",
+    icon: path.join(__dirname, "../assets/kickoff-icon.png"),
     backgroundColor: "#111111",
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
@@ -37,6 +45,19 @@ async function createWindow() {
 }
 
 app.whenReady().then(async () => {
+  session.defaultSession.webRequest.onBeforeSendHeaders(
+    {
+      urls: ["https://www.youtube.com/*", "https://www.youtube-nocookie.com/*"]
+    },
+    (details, callback) => {
+      callback({
+        requestHeaders: {
+          ...details.requestHeaders,
+          Referer: "https://kickoff.local/"
+        }
+      });
+    }
+  );
   ipcMain.handle("shell:openExternal", async (_event, url: string) => {
     await shell.openExternal(url);
   });
@@ -46,7 +67,15 @@ app.whenReady().then(async () => {
     return startYouTubeConnect();
   });
   ipcMain.handle("youtube:disconnect", () => disconnectYouTube());
-  ipcMain.handle("youtube:getVideos", (_event, forceRefresh?: boolean) => getYouTubeVideos(forceRefresh));
+  ipcMain.handle("youtube:getVideos", (_event, forceRefresh?: boolean, channelIds?: string[]) =>
+    getYouTubeVideos(forceRefresh, channelIds)
+  );
+  ipcMain.handle("youtube:getSubscriptions", (_event, forceRefresh?: boolean) =>
+    getYouTubeSubscriptions(forceRefresh)
+  );
+  ipcMain.handle("youtube:getComments", (_event, videoId: string, pageToken?: string) =>
+    getYouTubeComments(videoId, pageToken)
+  );
 
   await createWindow();
 
