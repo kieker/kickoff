@@ -10,6 +10,7 @@ import { YouTubeChannelSelector } from "./components/youtube-channel-selector";
 import { YouTubePlayer } from "./components/youtube-player";
 import { useDashboardInteractions } from "./state/use-dashboard-interactions";
 import { useDashboardSettings } from "./state/use-dashboard-settings";
+import { useSteamProfile } from "./state/use-steam-profile";
 import { useYouTubeConnection } from "./state/use-youtube-connection";
 import type { WidgetId } from "./types";
 import type { VideoItem } from "@kickoff/integrations";
@@ -33,6 +34,7 @@ export function KickoffDashboard() {
     subscriptionsState: youtubeSubscriptionsState,
     actions: youtubeActions
   } = useYouTubeConnection(youtubeFeedChannelIds);
+  const steam = useSteamProfile();
   const [widgetLibraryOpen, setWidgetLibraryOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -145,8 +147,15 @@ export function KickoffDashboard() {
                 ) : null}
                 {visibleWidgets.has("steam") ? (
                   <SteamWidget
+                    profileInput={steam.profileInput}
+                    result={steam.result}
+                    loading={steam.loading}
+                    onProfileInputChange={steam.setProfileInput}
                     showIcon={showWidgetIcon("steam")}
-                    onRefresh={interactionActions.refresh}
+                    onRefresh={() => {
+                      steam.load(true);
+                      interactionActions.refresh();
+                    }}
                     onHide={() => interactionActions.toggleWidget("steam")}
                   />
                 ) : null}

@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, session, shell } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadDesktopEnv } from "./env";
+import { getSteamProfile } from "./steam-api";
 import {
   disconnectYouTube,
   getYouTubeAuthStatus,
@@ -61,6 +62,9 @@ app.whenReady().then(async () => {
   ipcMain.handle("shell:openExternal", async (_event, url: string) => {
     await shell.openExternal(url);
   });
+  ipcMain.handle("steam:getProfile", (_event, profileInput: string, forceRefresh?: boolean) =>
+    getSteamProfile(profileInput, forceRefresh)
+  );
   ipcMain.handle("youtube:getStatus", () => getYouTubeAuthStatus());
   ipcMain.handle("youtube:connect", () => {
     console.info("[kickoff] Starting YouTube connection flow.");

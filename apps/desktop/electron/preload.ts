@@ -6,6 +6,11 @@ contextBridge.exposeInMainWorld("kickoff", {
       ipcRenderer.invoke("shell:openExternal", url);
     }
   },
+  steam: {
+    getProfile(profileInput: string, forceRefresh?: boolean) {
+      return ipcRenderer.invoke("steam:getProfile", profileInput, forceRefresh);
+    }
+  },
   youtube: {
     getStatus() {
       return ipcRenderer.invoke("youtube:getStatus");

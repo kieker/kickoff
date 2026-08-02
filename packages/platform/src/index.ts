@@ -47,6 +47,37 @@ export function openExternal(url: string) {
   window.open(url, "_blank", "noopener,noreferrer");
 }
 
+export type PlatformSteamProfile = {
+  steamId: string;
+  name: string;
+  profileUrl: string;
+  avatarUrl?: string;
+  status: string;
+  lastLogoffAt?: string;
+};
+
+export type PlatformSteamGame = {
+  id: string;
+  title: string;
+  playtimeMinutes: number;
+  recentPlaytimeMinutes: number;
+  lastPlayedAt?: string;
+  iconUrl?: string;
+};
+
+export type PlatformSteamResult =
+  | { status: "demo"; message: string }
+  | { status: "connected"; profile: PlatformSteamProfile; games: PlatformSteamGame[] }
+  | { status: "error"; message: string };
+
+export const steamBridge = {
+  isAvailable(): boolean {
+    return window.kickoff?.steam !== undefined;
+  },
+  async getProfile(profileInput: string, forceRefresh = false): Promise<PlatformSteamResult | undefined> {
+    return window.kickoff?.steam?.getProfile(profileInput, forceRefresh);
+  }
+};
 export type PlatformYouTubeConnectionState =
   | { status: "demo"; message?: string; redirectUri?: string; scope?: string }
   | { status: "disconnected"; message?: string; redirectUri?: string; scope?: string }
@@ -140,6 +171,9 @@ declare global {
     kickoff?: {
       shell: {
         openExternal(url: string): void;
+      };
+      steam?: {
+        getProfile(profileInput: string, forceRefresh?: boolean): Promise<PlatformSteamResult>;
       };
       youtube?: {
         getStatus(): Promise<PlatformYouTubeConnectionState>;

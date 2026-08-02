@@ -66,7 +66,7 @@ Notes:
 
 ## Steam Web API
 
-Status: **Planned**
+Status: **Public profile and recently played games active**
 
 Purpose:
 
@@ -78,15 +78,19 @@ Official docs:
 
 - [Steam Web API documentation](https://steamcommunity.com/dev)
 
-Planned project area:
+Project area:
 
-- `packages/integrations/src/steam/`
+- `apps/desktop/electron/steam-api.ts`
+- `packages/platform/src/index.ts`
+- `packages/dashboard/src/state/use-steam-profile.ts`
 - `packages/dashboard/src/widgets/steam-widget.tsx`
 
 Notes:
 
 - Some profile/game data depends on profile privacy settings.
-- Current beta uses demo data from `packages/integrations/src/index.ts`.
+- Enter a SteamID64, vanity name, or Steam Community profile URL in the widget.
+- The Steam Web API key remains in Electron and is never exposed to renderer code.
+- Live results are cached for five minutes. The widget uses demo data until `STEAM_API_KEY` is configured.
 
 ## Reddit API
 
