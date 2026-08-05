@@ -3,6 +3,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadDesktopEnv } from "./env";
 import { getSteamProfile } from "./steam-api";
+import { getRedditFeed } from "./reddit-api";
+import type { RedditSort } from "@kickoff/integrations";
 import {
   disconnectYouTube,
   getYouTubeAuthStatus,
@@ -64,6 +66,9 @@ app.whenReady().then(async () => {
   });
   ipcMain.handle("steam:getProfile", (_event, profileInput: string, forceRefresh?: boolean) =>
     getSteamProfile(profileInput, forceRefresh)
+  );
+  ipcMain.handle("reddit:getFeed", (_event, communities: string[], sort: RedditSort, forceRefresh?: boolean) =>
+    getRedditFeed(communities, sort, forceRefresh)
   );
   ipcMain.handle("youtube:getStatus", () => getYouTubeAuthStatus());
   ipcMain.handle("youtube:connect", () => {

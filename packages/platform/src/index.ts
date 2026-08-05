@@ -78,6 +78,29 @@ export const steamBridge = {
     return window.kickoff?.steam?.getProfile(profileInput, forceRefresh);
   }
 };
+export type PlatformRedditPost = {
+  id: string;
+  subreddit: string;
+  title: string;
+  score: number;
+  commentCount: number;
+  createdAt: string;
+  url: string;
+  author?: string;
+  thumbnailUrl?: string;
+};
+export type PlatformRedditResult =
+  | { status: "live"; posts: PlatformRedditPost[] }
+  | { status: "demo"; message: string; posts: PlatformRedditPost[] }
+  | { status: "error"; message: string; posts: PlatformRedditPost[] };
+export const redditBridge = {
+  isAvailable(): boolean {
+    return window.kickoff?.reddit !== undefined;
+  },
+  async getFeed(communities: string[], sort: "hot" | "new" | "top", forceRefresh = false): Promise<PlatformRedditResult | undefined> {
+    return window.kickoff?.reddit?.getFeed(communities, sort, forceRefresh);
+  }
+};
 export type PlatformYouTubeConnectionState =
   | { status: "demo"; message?: string; redirectUri?: string; scope?: string }
   | { status: "disconnected"; message?: string; redirectUri?: string; scope?: string }
@@ -174,6 +197,9 @@ declare global {
       };
       steam?: {
         getProfile(profileInput: string, forceRefresh?: boolean): Promise<PlatformSteamResult>;
+      };
+      reddit?: {
+        getFeed(communities: string[], sort: "hot" | "new" | "top", forceRefresh?: boolean): Promise<PlatformRedditResult>;
       };
       youtube?: {
         getStatus(): Promise<PlatformYouTubeConnectionState>;

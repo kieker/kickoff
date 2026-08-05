@@ -253,6 +253,9 @@ Deliverable: multiple integrations share a consistent widget/data-state model.
 
 ### Phase 6: Desktop Packaging And Portfolio Polish
 
+- Add a first-run integration setup guide.
+- Let users connect, skip, retry, and revisit each provider from Settings.
+- Keep developer credentials out of end-user setup; users authorize their own provider accounts.
 - Add Electron Builder config.
 - Build app installer/package.
 - Add README with screenshots and architecture notes.

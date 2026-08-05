@@ -91,10 +91,11 @@ Notes:
 - Enter a SteamID64, vanity name, or Steam Community profile URL in the widget.
 - The Steam Web API key remains in Electron and is never exposed to renderer code.
 - Live results are cached for five minutes. The widget uses demo data until `STEAM_API_KEY` is configured.
+- The current manual profile and local API-key configuration is a development fallback. The client-facing target is Steam OpenID plus a Kickoff backend that protects the application API key; see [First-Run Integration Setup](./onboarding.md).
 
 ## Reddit API
 
-Status: **Planned**
+Status: **Read-only community feeds active**
 
 Purpose:
 
@@ -106,15 +107,23 @@ Official docs:
 
 - [Reddit API docs](https://www.reddit.com/dev/api/)
 
-Planned project area:
+Project area:
 
-- `packages/integrations/src/reddit/`
+- `packages/integrations/src/reddit.ts`
+- `apps/desktop/electron/reddit-api.ts`
+- `packages/platform/src/index.ts`
+- `packages/dashboard/src/state/use-reddit-feed.ts`
 - `packages/dashboard/src/widgets/reddit-widget.tsx`
 
 Notes:
 
-- Current beta uses demo data from `packages/integrations/src/index.ts`.
-- Public feed support can land before authenticated user feeds.
+- Configure `REDDIT_CLIENT_ID` with the client ID of a Reddit installed application.
+- Set `REDDIT_USER_AGENT` to a descriptive application/version/contact value before distribution.
+- Electron uses Reddit's installed-client application-only OAuth grant; no client secret is shipped or required.
+- Users can choose up to 20 communities and switch between hot, new, and top feeds without connecting a Reddit account.
+- Feed results are cached for two minutes. Missing credentials and API failures retain demo posts with a visible status message.
+- Community preferences are stored locally under a versioned, profile-ready key.
+- User OAuth and subscription import remain a later phase.
 
 ## Spotify Web API
 

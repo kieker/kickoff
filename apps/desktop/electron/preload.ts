@@ -11,6 +11,11 @@ contextBridge.exposeInMainWorld("kickoff", {
       return ipcRenderer.invoke("steam:getProfile", profileInput, forceRefresh);
     }
   },
+  reddit: {
+    getFeed(communities: string[], sort: "hot" | "new" | "top", forceRefresh?: boolean) {
+      return ipcRenderer.invoke("reddit:getFeed", communities, sort, forceRefresh);
+    }
+  },
   youtube: {
     getStatus() {
       return ipcRenderer.invoke("youtube:getStatus");

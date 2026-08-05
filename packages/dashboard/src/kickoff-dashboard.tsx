@@ -11,6 +11,7 @@ import { YouTubePlayer } from "./components/youtube-player";
 import { useDashboardInteractions } from "./state/use-dashboard-interactions";
 import { useDashboardSettings } from "./state/use-dashboard-settings";
 import { useSteamProfile } from "./state/use-steam-profile";
+import { useRedditFeed } from "./state/use-reddit-feed";
 import { useYouTubeConnection } from "./state/use-youtube-connection";
 import type { WidgetId } from "./types";
 import type { VideoItem } from "@kickoff/integrations";
@@ -35,6 +36,7 @@ export function KickoffDashboard() {
     actions: youtubeActions
   } = useYouTubeConnection(youtubeFeedChannelIds);
   const steam = useSteamProfile();
+  const reddit = useRedditFeed(interactions.redditFilter);
   const [widgetLibraryOpen, setWidgetLibraryOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -171,9 +173,16 @@ export function KickoffDashboard() {
                 {visibleWidgets.has("reddit") ? (
                   <RedditWidget
                     filter={interactions.redditFilter}
+                    communities={reddit.communities}
+                    result={reddit.result}
+                    loading={reddit.loading}
                     showIcon={showWidgetIcon("reddit")}
                     onFilterChange={interactionActions.setRedditFilter}
-                    onRefresh={interactionActions.refresh}
+                    onCommunitiesChange={reddit.setCommunities}
+                    onRefresh={() => {
+                      void reddit.load(true);
+                      interactionActions.refresh();
+                    }}
                     onHide={() => interactionActions.toggleWidget("reddit")}
                   />
                 ) : null}
