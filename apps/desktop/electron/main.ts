@@ -5,6 +5,7 @@ import { loadDesktopEnv } from "./env";
 import { getSteamProfile } from "./steam-api";
 import { getRedditFeed } from "./reddit-api";
 import type { RedditSort } from "@kickoff/integrations";
+import { disconnectSpotify, getSpotifyAuthStatus, getSpotifyPlayback, getSpotifyRecentlyPlayed, startSpotifyConnect } from "./spotify-auth";
 import {
   disconnectYouTube,
   getYouTubeAuthStatus,
@@ -70,6 +71,11 @@ app.whenReady().then(async () => {
   ipcMain.handle("reddit:getFeed", (_event, communities: string[], sort: RedditSort, forceRefresh?: boolean) =>
     getRedditFeed(communities, sort, forceRefresh)
   );
+  ipcMain.handle("spotify:getStatus", () => getSpotifyAuthStatus());
+  ipcMain.handle("spotify:connect", () => startSpotifyConnect());
+  ipcMain.handle("spotify:disconnect", () => disconnectSpotify());
+  ipcMain.handle("spotify:getPlayback", () => getSpotifyPlayback());
+  ipcMain.handle("spotify:getRecentlyPlayed", () => getSpotifyRecentlyPlayed());
   ipcMain.handle("youtube:getStatus", () => getYouTubeAuthStatus());
   ipcMain.handle("youtube:connect", () => {
     console.info("[kickoff] Starting YouTube connection flow.");

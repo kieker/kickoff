@@ -101,6 +101,26 @@ export const redditBridge = {
     return window.kickoff?.reddit?.getFeed(communities, sort, forceRefresh);
   }
 };
+export type PlatformSpotifyConnectionState =
+  | { status: "disconnected" | "connecting"; message?: string; redirectUri?: string }
+  | { status: "connected"; message?: string; user?: { id: string; name: string; imageUrl?: string } }
+  | { status: "error"; message: string; redirectUri?: string };
+export type PlatformSpotifyTrack = { id: string; title: string; artists: string; album: string; albumArtUrl?: string; url: string; durationMs: number };
+export type PlatformSpotifyPlaybackResult =
+  | { status: "connected"; playback: { isPlaying: boolean; progressMs: number; deviceName?: string; track?: PlatformSpotifyTrack } }
+  | { status: "error"; message: string };
+export type PlatformSpotifyRecentTrack = PlatformSpotifyTrack & { playedAt: string };
+export type PlatformSpotifyRecentlyPlayedResult =
+  | { status: "connected"; tracks: PlatformSpotifyRecentTrack[] }
+  | { status: "error"; message: string; tracks: PlatformSpotifyRecentTrack[] };
+export const spotifyBridge = {
+  isAvailable: () => window.kickoff?.spotify !== undefined,
+  async getStatus(): Promise<PlatformSpotifyConnectionState | undefined> { return window.kickoff?.spotify?.getStatus(); },
+  async connect(): Promise<PlatformSpotifyConnectionState | undefined> { return window.kickoff?.spotify?.connect(); },
+  async disconnect(): Promise<PlatformSpotifyConnectionState | undefined> { return window.kickoff?.spotify?.disconnect(); },
+  async getPlayback(): Promise<PlatformSpotifyPlaybackResult | undefined> { return window.kickoff?.spotify?.getPlayback(); },
+  async getRecentlyPlayed(): Promise<PlatformSpotifyRecentlyPlayedResult | undefined> { return window.kickoff?.spotify?.getRecentlyPlayed(); }
+};
 export type PlatformYouTubeConnectionState =
   | { status: "demo"; message?: string; redirectUri?: string; scope?: string }
   | { status: "disconnected"; message?: string; redirectUri?: string; scope?: string }
@@ -200,6 +220,13 @@ declare global {
       };
       reddit?: {
         getFeed(communities: string[], sort: "hot" | "new" | "top", forceRefresh?: boolean): Promise<PlatformRedditResult>;
+      };
+      spotify?: {
+        getStatus(): Promise<PlatformSpotifyConnectionState>;
+        connect(): Promise<PlatformSpotifyConnectionState>;
+        disconnect(): Promise<PlatformSpotifyConnectionState>;
+        getPlayback(): Promise<PlatformSpotifyPlaybackResult>;
+        getRecentlyPlayed(): Promise<PlatformSpotifyRecentlyPlayedResult>;
       };
       youtube?: {
         getStatus(): Promise<PlatformYouTubeConnectionState>;

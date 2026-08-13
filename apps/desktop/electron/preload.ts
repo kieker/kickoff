@@ -16,6 +16,13 @@ contextBridge.exposeInMainWorld("kickoff", {
       return ipcRenderer.invoke("reddit:getFeed", communities, sort, forceRefresh);
     }
   },
+  spotify: {
+    getStatus() { return ipcRenderer.invoke("spotify:getStatus"); },
+    connect() { return ipcRenderer.invoke("spotify:connect"); },
+    disconnect() { return ipcRenderer.invoke("spotify:disconnect"); },
+    getPlayback() { return ipcRenderer.invoke("spotify:getPlayback"); },
+    getRecentlyPlayed() { return ipcRenderer.invoke("spotify:getRecentlyPlayed"); }
+  },
   youtube: {
     getStatus() {
       return ipcRenderer.invoke("youtube:getStatus");

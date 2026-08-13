@@ -127,7 +127,7 @@ Notes:
 
 ## Spotify Web API
 
-Status: **Phase two**
+Status: **Implemented (OAuth connection and now playing)**
 
 Purpose:
 
@@ -142,10 +142,14 @@ Official docs:
 
 Planned project area:
 
-- `packages/integrations/src/spotify/`
+- `packages/integrations/src/spotify.ts`
+- `apps/desktop/electron/spotify-auth.ts`
+- `apps/desktop/electron/spotify-token-store.ts`
 - `packages/dashboard/src/widgets/spotify-widget.tsx`
 
 Notes:
 
-- Electron should use OAuth with PKCE.
-- Current beta includes a now-playing placeholder only.
+- Electron uses Authorization Code with PKCE and encrypted token storage.
+- Configure `SPOTIFY_CLIENT_ID` and register `http://127.0.0.1:53683/spotify/oauth/callback` as a redirect URI in the Spotify developer dashboard.
+- Requested scopes: `user-read-private`, `user-read-currently-playing`, `user-read-playback-state`, and `user-read-recently-played`.
+- The widget shows the five most recently played tracks as a useful idle state and beneath active playback.

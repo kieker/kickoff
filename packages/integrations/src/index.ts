@@ -10,6 +10,7 @@ export type {
 } from "./youtube";
 export { defaultRedditCommunities, redditPosts } from "./reddit";
 export type { RedditFeedResult, RedditPost, RedditSort } from "./reddit";
+export type { SpotifyConnectionState, SpotifyPlayback, SpotifyPlaybackResult, SpotifyRecentTrack, SpotifyRecentlyPlayedResult, SpotifyTrack } from "./spotify";
 
 export type GameItem = {
   id: string;

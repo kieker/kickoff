@@ -12,6 +12,7 @@ import { useDashboardInteractions } from "./state/use-dashboard-interactions";
 import { useDashboardSettings } from "./state/use-dashboard-settings";
 import { useSteamProfile } from "./state/use-steam-profile";
 import { useRedditFeed } from "./state/use-reddit-feed";
+import { useSpotifyConnection } from "./state/use-spotify-connection";
 import { useYouTubeConnection } from "./state/use-youtube-connection";
 import type { WidgetId } from "./types";
 import type { VideoItem } from "@kickoff/integrations";
@@ -37,6 +38,7 @@ export function KickoffDashboard() {
   } = useYouTubeConnection(youtubeFeedChannelIds);
   const steam = useSteamProfile();
   const reddit = useRedditFeed(interactions.redditFilter);
+  const spotify = useSpotifyConnection();
   const [widgetLibraryOpen, setWidgetLibraryOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -189,7 +191,13 @@ export function KickoffDashboard() {
                 {visibleWidgets.has("spotify") ? (
                   <SpotifyWidget
                     showIcon={showWidgetIcon("spotify")}
-                    onRefresh={interactionActions.refresh}
+                    connection={spotify.connection}
+                    playback={spotify.playback}
+                    recentlyPlayed={spotify.recentlyPlayed}
+                    loading={spotify.loading}
+                    onConnect={() => { void spotify.connect(); }}
+                    onDisconnect={() => { void spotify.disconnect(); }}
+                    onRefresh={() => { void spotify.refresh(); interactionActions.refresh(); }}
                     onHide={() => interactionActions.toggleWidget("spotify")}
                   />
                 ) : null}

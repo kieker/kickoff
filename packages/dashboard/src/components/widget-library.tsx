@@ -44,7 +44,7 @@ const widgets: Array<{
   {
     id: "spotify",
     title: "Now playing",
-    description: "Phase-two Spotify placeholder widget.",
+    description: "Live Spotify now-playing and device status.",
     icon: SiSpotify
   }
 ];
