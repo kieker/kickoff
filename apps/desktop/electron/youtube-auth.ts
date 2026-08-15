@@ -8,6 +8,7 @@ import {
   writeYouTubeTokens,
   type StoredYouTubeTokens
 } from "./youtube-token-store";
+import { renderOAuthCallbackPage } from "./oauth-callback-page";
 
 const YOUTUBE_SCOPE = "https://www.googleapis.com/auth/youtube.readonly";
 const DEFAULT_REDIRECT_PORT = 53682;
@@ -952,23 +953,11 @@ function formatRelativeAge(value?: string) {
 
 function sendCallbackResponse(response: http.ServerResponse, statusCode: number, message: string) {
   response.writeHead(statusCode, { "content-type": "text/html; charset=utf-8" });
-  response.end(`<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <title>Kickoff YouTube Authorization</title>
-    <style>
-      body { font-family: system-ui, sans-serif; margin: 0; min-height: 100vh; display: grid; place-items: center; background: #111; color: #fff; }
-      main { max-width: 520px; padding: 32px; line-height: 1.5; }
-    </style>
-  </head>
-  <body>
-    <main>
-      <h1>Kickoff</h1>
-      <p>${escapeHtml(message)}</p>
-    </main>
-  </body>
-</html>`);
+  response.end(renderOAuthCallbackPage({
+    provider: "YouTube",
+    message,
+    success: statusCode >= 200 && statusCode < 300
+  }));
 }
 
 function cleanupPendingAuth() {
@@ -982,23 +971,4 @@ function cleanupPendingAuth() {
 
 function base64Url(input: Buffer) {
   return input.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
-}
-
-function escapeHtml(value: string) {
-  return value.replace(/[&<>"']/g, (character) => {
-    switch (character) {
-      case "&":
-        return "&amp;";
-      case "<":
-        return "&lt;";
-      case ">":
-        return "&gt;";
-      case '"':
-        return "&quot;";
-      case "'":
-        return "&#39;";
-      default:
-        return character;
-    }
-  });
 }

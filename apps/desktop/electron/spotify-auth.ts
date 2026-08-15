@@ -3,6 +3,7 @@ import { createServer } from "node:http";
 import { shell } from "electron";
 import type { SpotifyConnectionState, SpotifyPlaybackResult, SpotifyRecentlyPlayedResult, SpotifyTrack } from "@kickoff/integrations";
 import { clearSpotifyTokens, readSpotifyTokens, writeSpotifyTokens, type StoredSpotifyTokens } from "./spotify-token-store";
+import { renderOAuthCallbackPage } from "./oauth-callback-page";
 
 const CALLBACK_PORT = Number(process.env.SPOTIFY_REDIRECT_PORT || 53683);
 const CALLBACK_PATH = "/spotify/oauth/callback";
@@ -90,7 +91,7 @@ function waitForCallback(expectedState: string): Promise<string> {
     const server = createServer((request, response) => {
       const url = new URL(request.url || "/", REDIRECT_URI);
       if (url.pathname !== CALLBACK_PATH) { response.writeHead(404).end(); return; }
-      const finish = (status: number, text: string) => { response.writeHead(status, { "Content-Type": "text/html; charset=utf-8" }); response.end(`<h1>${text}</h1><p>You can close this tab and return to Kickoff.</p>`); clearTimeout(timeout); server.close(); };
+      const finish = (status: number, text: string) => { response.writeHead(status, { "Content-Type": "text/html; charset=utf-8" }); response.end(renderOAuthCallbackPage({ provider: "Spotify", message: text, success: status >= 200 && status < 300 })); clearTimeout(timeout); server.close(); };
       if (url.searchParams.get("state") !== expectedState) { finish(400, "Spotify connection failed"); reject(new Error("Spotify returned an invalid authorization state.")); return; }
       const error = url.searchParams.get("error");
       const code = url.searchParams.get("code");

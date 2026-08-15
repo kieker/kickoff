@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, PlugZap } from "lucide-react";
 import { Button } from "@kickoff/ui";
 import { CommandPalette } from "./components/command-palette";
 import { SavedLibrary } from "./components/saved-library";
@@ -8,6 +8,7 @@ import { TopBar } from "./components/top-bar";
 import { WidgetLibrary } from "./components/widget-library";
 import { YouTubeChannelSelector } from "./components/youtube-channel-selector";
 import { YouTubePlayer } from "./components/youtube-player";
+import { IntegrationWizard, type IntegrationWizardEntry } from "./components/integration-wizard";
 import { useDashboardInteractions } from "./state/use-dashboard-interactions";
 import { useDashboardSettings } from "./state/use-dashboard-settings";
 import { useSteamProfile } from "./state/use-steam-profile";
@@ -47,8 +48,22 @@ export function KickoffDashboard() {
   const [selectedSavedTag, setSelectedSavedTag] = useState<string>();
   const [youtubeChannelSelectorOpen, setYouTubeChannelSelectorOpen] = useState(false);
   const [playingVideo, setPlayingVideo] = useState<VideoItem>();
+  const [integrationWizard, setIntegrationWizard] = useState<{ open: boolean; entry: IntegrationWizardEntry }>(() => ({
+    open: !hasCompletedIntegrationOnboarding(),
+    entry: "welcome"
+  }));
   const backgroundStyle = getBackgroundStyle(settings);
   const visibleWidgets = new Set(interactions.visibleWidgets);
+  const missingIntegrationCount = Number(youtubeConnection.status !== "connected") + Number(spotify.connection.status !== "connected");
+
+  function completeIntegrationOnboarding() {
+    try { window.localStorage.setItem(INTEGRATION_ONBOARDING_KEY, "complete"); } catch { /* Storage can be unavailable in previews. */ }
+    setIntegrationWizard((current) => ({ ...current, open: false }));
+  }
+
+  function beginIntegrationSetup() {
+    setIntegrationWizard({ open: true, entry: "setup" });
+  }
 
   function openWidgetLibrary() {
     setCommandPaletteOpen(false);
@@ -101,6 +116,12 @@ export function KickoffDashboard() {
                 </p>
               </div>
               <div className="flex gap-2">
+                {missingIntegrationCount > 0 ? (
+                  <Button variant="ghost" onClick={beginIntegrationSetup}>
+                    <PlugZap className="h-4 w-4" />
+                    Connect {missingIntegrationCount}
+                  </Button>
+                ) : null}
                 <Button variant="secondary" onClick={() => setCommandPaletteOpen(true)}>
                   <Search className="h-4 w-4" />
                   Find
@@ -272,8 +293,29 @@ export function KickoffDashboard() {
         onComplete={interactionActions.completeVideo}
         onClose={() => setPlayingVideo(undefined)}
       />
+      <IntegrationWizard
+        open={integrationWizard.open}
+        entry={integrationWizard.entry}
+        youtubeStatus={youtubeConnection.status}
+        spotifyStatus={spotify.connection.status}
+        youtubeBusy={youtubeActionState.connecting}
+        spotifyBusy={spotify.loading}
+        onConnectYouTube={() => {
+          if (integrationWizard.entry === "welcome") setIntegrationWizard({ open: true, entry: "setup" });
+          else void youtubeActions.connect();
+        }}
+        onConnectSpotify={() => { void spotify.connect(); }}
+        onComplete={completeIntegrationOnboarding}
+      />
     </div>
   );
+}
+
+const INTEGRATION_ONBOARDING_KEY = "kickoff.integration-onboarding.v1";
+
+function hasCompletedIntegrationOnboarding() {
+  try { return window.localStorage.getItem(INTEGRATION_ONBOARDING_KEY) === "complete"; }
+  catch { return false; }
 }
 
 function getBackgroundStyle(settings: {
