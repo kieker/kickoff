@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import { useState } from "react";
-import { MoreHorizontal } from "lucide-react";
+import { ChevronDown, ChevronUp, GripVertical, MoreHorizontal } from "lucide-react";
 import { Button, Card, CardContent, CardHeader, CardTitle, cn } from "@kickoff/ui";
+import { useWidgetLayout } from "./widget-layout-context";
 
 type WidgetShellProps = {
   title: string;
@@ -25,10 +26,24 @@ export function WidgetShell({
   children
 }: WidgetShellProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const layout = useWidgetLayout();
 
   return (
-    <Card className={cn("min-h-0 overflow-hidden", className)}>
+    <Card className={cn("h-full min-h-0 overflow-hidden", className)}>
       <CardHeader>
+        {layout?.editMode ? (
+          <button
+            type="button"
+            aria-label={`Drag ${title} widget`}
+            title="Drag to reorder"
+            draggable
+            onDragStart={layout.onDragStart}
+            onDragEnd={layout.onDragEnd}
+            className="-ml-2 grid h-9 w-7 shrink-0 cursor-grab place-items-center rounded text-muted-foreground hover:bg-accent/12 hover:text-foreground active:cursor-grabbing"
+          >
+            <GripVertical className="h-4 w-4" />
+          </button>
+        ) : null}
         <div className="flex min-w-0 items-start gap-3">
           {icon ? (
             <div
@@ -48,6 +63,12 @@ export function WidgetShell({
             <CardTitle>{title}</CardTitle>
           </div>
         </div>
+        <div className="ml-auto flex items-center gap-1">
+        {layout?.editMode ? (
+          <Button aria-label={`${layout.collapsed ? "Expand" : "Collapse"} ${title}`} title={layout.collapsed ? "Expand widget" : "Collapse widget"} size="icon" variant="ghost" onClick={layout.onToggleCollapsed}>
+            {layout.collapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+          </Button>
+        ) : null}
         {action ?? (
           <div className="relative">
             <Button
@@ -95,8 +116,20 @@ export function WidgetShell({
             ) : null}
           </div>
         )}
+        </div>
       </CardHeader>
-      <CardContent>{children}</CardContent>
+      {!layout?.collapsed ? <CardContent className="h-[calc(100%-3.75rem)] overflow-auto">{children}</CardContent> : null}
+      {layout?.editMode && !layout.collapsed ? (
+        <button
+          type="button"
+          aria-label={`Resize ${title} widget`}
+          title="Drag to resize"
+          onPointerDown={layout.onResizeStart}
+          className="absolute bottom-0 right-0 z-20 h-7 w-7 cursor-se-resize rounded-tl-md border-l border-t border-accent/30 bg-accent/16"
+        >
+          <span className="absolute bottom-1.5 right-1.5 h-2.5 w-2.5 border-b-2 border-r-2 border-accent" />
+        </button>
+      ) : null}
     </Card>
   );
 }

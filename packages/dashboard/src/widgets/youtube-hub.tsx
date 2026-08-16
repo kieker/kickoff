@@ -1,4 +1,4 @@
-import { Check, Clock3, ExternalLink, Link, Link2Off, ListFilter, Loader2, Pin, Play, Plus, RefreshCw, Star, X } from "lucide-react";
+import { Check, Clock3, ExternalLink, Link, Link2Off, ListFilter, Loader2, Pin, Play, Plus, RefreshCw, Star, UserRound, X } from "lucide-react";
 import { useState } from "react";
 import { SiYoutube } from "react-icons/si";
 import { type VideoItem, type YouTubeConnectionState } from "@kickoff/integrations";
@@ -194,9 +194,9 @@ export function YouTubeHub({
                 <div className="mt-3 rounded-md border border-accent/25 bg-accent/8 p-3">
                   <div className="mb-2 flex items-center justify-between gap-2">
                     <p className="text-xs font-semibold">Save to tags</p>
-                    <button type="button" onClick={() => setTaggingVideoId(undefined)} aria-label="Close tag picker">
+                    <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setTaggingVideoId(undefined)} aria-label="Close tag picker">
                       <X className="h-3.5 w-3.5" />
-                    </button>
+                    </Button>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {availableTags.map((tag) => (
@@ -287,10 +287,10 @@ function ConnectionPopover({
   return (
     <div className="relative">
       <Button
-        size="sm"
+        size="icon"
         variant="ghost"
         onClick={() => setOpen((current) => !current)}
-        aria-label="YouTube connection"
+        aria-label={`YouTube: ${getConnectionLabel(state.status)}`}
         aria-expanded={open}
       >
         <ConnectionStatusIcon status={state.status} />
@@ -303,9 +303,9 @@ function ConnectionPopover({
               <p className="font-semibold">{getConnectionLabel(state.status)}</p>
               <p className="mt-1 leading-relaxed text-muted-foreground">{message}</p>
             </div>
-            <button type="button" onClick={() => setOpen(false)} aria-label="Close connection details">
+            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setOpen(false)} aria-label="Close connection details">
               <X className="h-3.5 w-3.5 text-muted-foreground" />
-            </button>
+            </Button>
           </div>
           <div className="mt-3 flex justify-end">
             {canDisconnect ? (
@@ -340,7 +340,12 @@ function ConnectionStatusIcon({ status }: { status: YouTubeConnectionState["stat
   }
 
   if (status === "connected") {
-    return <Check className="h-4 w-4 shrink-0 text-emerald-300" />;
+    return (
+      <span className="relative grid h-5 w-5 shrink-0 place-items-center" aria-hidden="true">
+        <UserRound className="h-4 w-4 text-foreground" />
+        <span className="absolute bottom-0 right-0 h-2 w-2 rounded-full border border-card bg-emerald-400 shadow-[0_0_4px_1px_rgba(52,211,153,0.9),0_0_10px_2px_rgba(52,211,153,0.45)]" />
+      </span>
+    );
   }
 
   if (status === "error") {

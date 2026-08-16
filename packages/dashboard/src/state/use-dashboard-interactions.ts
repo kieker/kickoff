@@ -18,6 +18,7 @@ export type VideoProgress = {
 
 export type DashboardInteractions = {
   visibleWidgets: WidgetId[];
+  widgetLayout: Partial<Record<WidgetId, WidgetLayout>>;
   videoStatuses: Record<string, VideoItem["status"]>;
   savedVideos: Record<string, SavedVideo>;
   videoProgress: Record<string, VideoProgress>;
@@ -28,11 +29,24 @@ export type DashboardInteractions = {
   lastRefreshedAt?: string;
 };
 
+export type WidgetLayout = {
+  columnSpan: number;
+  height?: number;
+  collapsed: boolean;
+};
+
 const storageKey = "kickoff.dashboard.interactions";
 const defaultVisibleWidgets: WidgetId[] = ["youtube", "steam", "weather", "reddit", "spotify"];
 
 const defaultInteractions: DashboardInteractions = {
   visibleWidgets: defaultVisibleWidgets,
+  widgetLayout: {
+    youtube: { columnSpan: 2, collapsed: false },
+    steam: { columnSpan: 1, collapsed: false },
+    weather: { columnSpan: 1, collapsed: false },
+    reddit: { columnSpan: 1, collapsed: false },
+    spotify: { columnSpan: 1, collapsed: false }
+  },
   videoStatuses: Object.fromEntries(youtubeVideos.map((video) => [video.id, video.status])),
   savedVideos: {},
   videoProgress: {},
@@ -55,7 +69,11 @@ export function useDashboardInteractions() {
       savedVideos: stored.savedVideos ?? {},
       videoProgress: stored.videoProgress ?? {},
       priorityChannelIds: stored.priorityChannelIds ?? [],
-      selectedYouTubeChannelIds: stored.selectedYouTubeChannelIds ?? []
+      selectedYouTubeChannelIds: stored.selectedYouTubeChannelIds ?? [],
+      widgetLayout: {
+        ...defaultInteractions.widgetLayout,
+        ...(stored.widgetLayout ?? {})
+      }
     };
   });
 
@@ -75,6 +93,32 @@ export function useDashboardInteractions() {
               : [...current.visibleWidgets, widgetId]
           };
         });
+      },
+      moveWidget(widgetId: WidgetId, targetId: WidgetId) {
+        if (widgetId === targetId) return;
+        setState((current) => {
+          const next = [...current.visibleWidgets];
+          const from = next.indexOf(widgetId);
+          const to = next.indexOf(targetId);
+          if (from < 0 || to < 0) return current;
+          next.splice(from, 1);
+          next.splice(to, 0, widgetId);
+          return { ...current, visibleWidgets: next };
+        });
+      },
+      updateWidgetLayout(widgetId: WidgetId, layout: Partial<WidgetLayout>) {
+        setState((current) => ({
+          ...current,
+          widgetLayout: {
+            ...current.widgetLayout,
+            [widgetId]: {
+              columnSpan: current.widgetLayout[widgetId]?.columnSpan ?? 1,
+              collapsed: current.widgetLayout[widgetId]?.collapsed ?? false,
+              ...current.widgetLayout[widgetId],
+              ...layout
+            }
+          }
+        }));
       },
       setRedditFilter(filter: RedditFilter) {
         setState((current) => ({ ...current, redditFilter: filter }));

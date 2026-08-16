@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, session, shell } from "electron";
+import { app, BrowserWindow, ipcMain, Menu, session, shell } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadDesktopEnv } from "./env";
@@ -26,6 +26,7 @@ async function createWindow() {
     minWidth: 980,
     minHeight: 680,
     title: "Kickoff",
+    autoHideMenuBar: true,
     icon: path.join(__dirname, "../assets/kickoff-icon.png"),
     backgroundColor: "#111111",
     webPreferences: {
@@ -35,6 +36,18 @@ async function createWindow() {
       sandbox: true
     }
   });
+
+  window.setMenu(null);
+
+  if (isDev) {
+    window.webContents.on("before-input-event", (event, input) => {
+      const toggleDevTools = input.key === "F12" || (input.control && input.shift && input.key.toLowerCase() === "i");
+      if (toggleDevTools) {
+        event.preventDefault();
+        window.webContents.toggleDevTools();
+      }
+    });
+  }
 
   window.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
@@ -49,6 +62,7 @@ async function createWindow() {
 }
 
 app.whenReady().then(async () => {
+  Menu.setApplicationMenu(null);
   session.defaultSession.webRequest.onBeforeSendHeaders(
     {
       urls: ["https://www.youtube.com/*", "https://www.youtube-nocookie.com/*"]

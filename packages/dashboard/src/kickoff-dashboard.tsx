@@ -6,6 +6,7 @@ import { SavedLibrary } from "./components/saved-library";
 import { SettingsPanel } from "./components/settings-panel";
 import { TopBar } from "./components/top-bar";
 import { WidgetLibrary } from "./components/widget-library";
+import { WidgetFrame } from "./components/widget-frame";
 import { YouTubeChannelSelector } from "./components/youtube-channel-selector";
 import { YouTubePlayer } from "./components/youtube-player";
 import { IntegrationWizard, type IntegrationWizardEntry } from "./components/integration-wizard";
@@ -48,6 +49,7 @@ export function KickoffDashboard() {
   const [selectedSavedTag, setSelectedSavedTag] = useState<string>();
   const [youtubeChannelSelectorOpen, setYouTubeChannelSelectorOpen] = useState(false);
   const [playingVideo, setPlayingVideo] = useState<VideoItem>();
+  const [draggingWidget, setDraggingWidget] = useState<WidgetId>();
   const [integrationWizard, setIntegrationWizard] = useState<{ open: boolean; entry: IntegrationWizardEntry }>(() => ({
     open: !hasCompletedIntegrationOnboarding(),
     entry: "welcome"
@@ -135,13 +137,14 @@ export function KickoffDashboard() {
 
             {settings.editMode ? (
               <div className="mb-4 rounded-md border border-dashed border-accent bg-accent/12 px-4 py-3 text-sm">
-                Layout edit mode is on. Drag and resize controls come next.
+                Layout edit mode is on. Use the grip to reorder, the corner handle to resize, or the arrow to collapse a widget.
               </div>
             ) : null}
 
             {interactions.visibleWidgets.length > 0 ? (
-              <div className="grid auto-rows-min grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-3">
+              <div className="grid grid-flow-dense auto-rows-[4px] grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-3">
                 {visibleWidgets.has("youtube") ? (
+                  <WidgetFrame id="youtube" editMode={settings.editMode} layout={interactions.widgetLayout.youtube!} order={interactions.visibleWidgets.indexOf("youtube")} dragging={draggingWidget === "youtube"} onDragging={setDraggingWidget} onDrop={interactionActions.moveWidget} onLayoutChange={(layout) => interactionActions.updateWidgetLayout("youtube", layout)}>
                   <YouTubeHub
                     videoStatuses={interactions.videoStatuses}
                     onSetVideoStatus={interactionActions.setVideoStatus}
@@ -169,8 +172,10 @@ export function KickoffDashboard() {
                     onRefresh={() => youtubeActions.refreshVideos(true)}
                     onHide={() => interactionActions.toggleWidget("youtube")}
                   />
+                  </WidgetFrame>
                 ) : null}
                 {visibleWidgets.has("steam") ? (
+                  <WidgetFrame id="steam" editMode={settings.editMode} layout={interactions.widgetLayout.steam!} order={interactions.visibleWidgets.indexOf("steam")} dragging={draggingWidget === "steam"} onDragging={setDraggingWidget} onDrop={interactionActions.moveWidget} onLayoutChange={(layout) => interactionActions.updateWidgetLayout("steam", layout)}>
                   <SteamWidget
                     profileInput={steam.profileInput}
                     result={steam.result}
@@ -183,8 +188,10 @@ export function KickoffDashboard() {
                     }}
                     onHide={() => interactionActions.toggleWidget("steam")}
                   />
+                  </WidgetFrame>
                 ) : null}
                 {visibleWidgets.has("weather") ? (
+                  <WidgetFrame id="weather" editMode={settings.editMode} layout={interactions.widgetLayout.weather!} order={interactions.visibleWidgets.indexOf("weather")} dragging={draggingWidget === "weather"} onDragging={setDraggingWidget} onDrop={interactionActions.moveWidget} onLayoutChange={(layout) => interactionActions.updateWidgetLayout("weather", layout)}>
                   <WeatherWidget
                     location={interactions.weatherLocation}
                     showIcon={showWidgetIcon("weather")}
@@ -192,8 +199,10 @@ export function KickoffDashboard() {
                     onRefresh={interactionActions.refresh}
                     onHide={() => interactionActions.toggleWidget("weather")}
                   />
+                  </WidgetFrame>
                 ) : null}
                 {visibleWidgets.has("reddit") ? (
+                  <WidgetFrame id="reddit" editMode={settings.editMode} layout={interactions.widgetLayout.reddit!} order={interactions.visibleWidgets.indexOf("reddit")} dragging={draggingWidget === "reddit"} onDragging={setDraggingWidget} onDrop={interactionActions.moveWidget} onLayoutChange={(layout) => interactionActions.updateWidgetLayout("reddit", layout)}>
                   <RedditWidget
                     filter={interactions.redditFilter}
                     communities={reddit.communities}
@@ -208,8 +217,10 @@ export function KickoffDashboard() {
                     }}
                     onHide={() => interactionActions.toggleWidget("reddit")}
                   />
+                  </WidgetFrame>
                 ) : null}
                 {visibleWidgets.has("spotify") ? (
+                  <WidgetFrame id="spotify" editMode={settings.editMode} layout={interactions.widgetLayout.spotify!} order={interactions.visibleWidgets.indexOf("spotify")} dragging={draggingWidget === "spotify"} onDragging={setDraggingWidget} onDrop={interactionActions.moveWidget} onLayoutChange={(layout) => interactionActions.updateWidgetLayout("spotify", layout)}>
                   <SpotifyWidget
                     showIcon={showWidgetIcon("spotify")}
                     connection={spotify.connection}
@@ -221,6 +232,7 @@ export function KickoffDashboard() {
                     onRefresh={() => { void spotify.refresh(); interactionActions.refresh(); }}
                     onHide={() => interactionActions.toggleWidget("spotify")}
                   />
+                  </WidgetFrame>
                 ) : null}
               </div>
             ) : (
